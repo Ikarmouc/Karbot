@@ -8,6 +8,9 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    maven{
+        url = uri("https://m2.dv8tion.net/releases")
+    }
 }
 
 dependencies {
@@ -15,9 +18,9 @@ dependencies {
     implementation("dev.kord:kord-core:0.11.1")
     implementation("dev.kord:kord-voice:0.11.1")
     implementation("dev.kord:kord-core-voice:0.11.1")
-    implementation("dev.schlaubi.lavakord:kord:5.1.7")
+    implementation("dev.schlaubi.lavakord:kord:6.0.0")
     implementation("org.slf4j:slf4j-simple:2.0.9")
-
+    implementation("com.sedmelluq:lavaplayer:1.3.78")
 }
 
 tasks.test {

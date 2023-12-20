@@ -1,5 +1,6 @@
 import dev.kord.core.Kord
 import dev.kord.rest.builder.interaction.integer
+import dev.kord.rest.builder.interaction.string
 import dev.kord.rest.builder.interaction.user
 
 suspend fun registerSlashCommands(kord: Kord) {
@@ -22,7 +23,6 @@ suspend fun registerSlashCommands(kord: Kord) {
             required = true
         }
     }
-    kord.createGlobalChatInputCommand("liste_des_membres", "A slash command that lists all users")
     kord.createGlobalChatInputCommand(
         "about",
         "A slash command that return a user if a user is mentionned or information about the bot"
@@ -30,7 +30,24 @@ suspend fun registerSlashCommands(kord: Kord) {
         user("user", "The user") {
         }
     }
+    kord.createGlobalChatInputCommand(
+        "rejoindre",
+        "Join the voice channel of the user"
+    )
 
+    kord.createGlobalChatInputCommand(
+        "déconnecter",
+        "quitte le vocal"
+    )
+
+    kord.createGlobalChatInputCommand(
+        "play",
+        "Play a song"
+    ){
+        string("song", "The name of the song"){
+            required = true
+        }
+    }
 
 
 }
