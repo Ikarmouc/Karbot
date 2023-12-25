@@ -13,10 +13,8 @@ import dev.kord.core.on
 import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.voice.VoiceConnection
 import dev.schlaubi.lavakord.LavaKord
-import dev.schlaubi.lavakord.audio.Link
 import dev.schlaubi.lavakord.kord.lavakord
 import kotlin.time.Duration.Companion.seconds
-import dev.schlaubi.lavakord.kord.getPlayer
 import kotlinx.coroutines.flow.*
 
 @OptIn(KordVoice::class)

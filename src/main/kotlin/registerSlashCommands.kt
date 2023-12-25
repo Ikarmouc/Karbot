@@ -1,6 +1,5 @@
 import dev.kord.core.Kord
 import dev.kord.rest.builder.interaction.*
-import kotlin.math.min
 
 suspend fun registerSlashCommands(kord: Kord) {
 
