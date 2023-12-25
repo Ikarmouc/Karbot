@@ -1,16 +1,13 @@
-import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers
-import com.sedmelluq.discord.lavaplayer.tools.FriendlyException
-import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack
-import dev.arbjerg.lavalink.protocol.v4.ResultStatus
 import dev.kord.common.Color
 import dev.kord.common.annotation.KordVoice
+import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.behavior.channel.connect
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.entity.interaction.Interaction
 import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.message.EmbedBuilder
@@ -19,10 +16,8 @@ import dev.schlaubi.lavakord.LavaKord
 import dev.schlaubi.lavakord.audio.Link
 import dev.schlaubi.lavakord.kord.lavakord
 import kotlin.time.Duration.Companion.seconds
-import dev.schlaubi.lavakord.kord.getLink
 import dev.schlaubi.lavakord.kord.getPlayer
-import dev.schlaubi.lavakord.rest.loadItem
-import java.net.ConnectException
+import kotlinx.coroutines.flow.*
 
 @OptIn(KordVoice::class)
 suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowflake, VoiceConnection>) {
@@ -30,7 +25,7 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
 
 //    val connections = mutableMapOf<Snowflake, VoiceConnection>()
     kord.on<ChatInputCommandInteractionCreateEvent> {
-        val linksMap : MutableMap<Snowflake, Link> = mutableMapOf()   //Map contenant les links de chacun des serveurs
+        // val linksMap : MutableMap<Snowflake, Link> = mutableMapOf()   //Map contenant les links de chacun des serveurs
         val response = interaction.deferPublicResponse()
         val command = interaction.command
 
@@ -125,15 +120,17 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
                 AudioSourceManagers.registerRemoteSources(lavaplayerManager)
 
 
-//                val link: Link
-//                println(lavalink.nodes.get(0))
-//                link = lavalink.getLink(ctx.data.guildId.value!!)
+                // val link: Link
+                // println(lavalink.nodes.get(0).getPlayer(ctx.data.guildId.value!!))
+                // link = lavalink.getLink(ctx.data.guildId.value!!)
+
+
 //
 //
 //                val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
 //                if (voiceChannel == null) {
 //                    response.respond {
-//                        content = "Viens dans un vovo ou conséquences  !"
+//                        content = "Pas dans un vocal"
 //                    }
 //                    return@on
 //                }
@@ -207,6 +204,42 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
                     }
                 }
             }
+
+            "clear" -> {
+                println()
+                if (isAutorized(ctx,Permission.ManageMessages)){
+                    var count = 0
+                    val listMessage = ctx.getChannel().messages
+                    if (listMessage.count() <= 1) {
+                        response.respond {
+                            content = "Il n'y a pas de message"
+                        }
+                    }else{
+                        if (command.integers["number"] == null){
+                            while (ctx.getChannelOrNull()?.messages?.count()!! > 1) {
+                                ctx.getChannel().deleteMessage(ctx.getChannel().messages.last().id)
+                                count++
+                            }
+                        }else{
+                            while ( count < command.integers["number"]!!) {
+                                ctx.getChannel().deleteMessage(ctx.getChannel().messages.last().id)
+                                count++
+                            }
+                        }
+                        response.respond {
+                            content = "```${count} messages supprimés```"
+                        }
+                    }
+                }else{
+                    response.respond {
+                        content = "```Vous n'avez pas la permission de supprimer des messages```"
+                    }
+                    return@on
+                }
+
+            }
+
+
             else -> {
                     response.respond {
                         content = "```Erreur de commande, veuillez reessayer```"
@@ -215,6 +248,17 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
 
             }
         }
+
+
+    }
+
+}
+
+suspend fun isAutorized(ctx: Interaction,perm : Permission): Boolean {
+    if(ctx.user.asMember(ctx.data.guildId.value!!).getPermissions().contains(perm)){
+        return true
+    }else{
+        return false
     }
 
 }

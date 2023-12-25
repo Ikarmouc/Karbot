@@ -1,7 +1,6 @@
 import dev.kord.core.Kord
-import dev.kord.rest.builder.interaction.integer
-import dev.kord.rest.builder.interaction.string
-import dev.kord.rest.builder.interaction.user
+import dev.kord.rest.builder.interaction.*
+import kotlin.math.min
 
 suspend fun registerSlashCommands(kord: Kord) {
 
@@ -47,6 +46,19 @@ suspend fun registerSlashCommands(kord: Kord) {
         string("song", "The name of the song"){
             required = true
         }
+    }
+
+
+    kord.createGlobalChatInputCommand(
+        "clear",
+        "Clear messages",
+    ){
+        integer("number", "The number of messages to clear"){
+            required = false
+            minValue = 1
+            maxValue = 100
+        }
+
     }
 
 
