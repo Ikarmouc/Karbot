@@ -204,7 +204,6 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
             }
 
             "clear" -> {
-                println()
                 if (isAutorized(ctx,Permission.ManageMessages)){
                     var count = 0
                     val listMessage = ctx.getChannel().messages
@@ -237,6 +236,94 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
 
             }
 
+            "assign_role"->{
+                if(isAutorized(ctx,Permission.ManageRoles)) {
+                    val user = ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)
+                    val listRolesUser =
+                        ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)?.roles?.toList()
+
+
+                    val role = ctx.command.roles.get("role")!!.asRole()
+
+
+                    println(role)
+                    if (listRolesUser != null) {
+                        if (listRolesUser.contains(role)) {
+                            response.respond {
+                                content = "Le role est déja attribué à l'utilisateur"
+                            }
+                        } else {
+                            if(role.name == "@everyone"){
+                                response.respond {
+                                    content = " Vous ne pouvez pas ajouter le role everyone"
+                                }
+                            }else{
+
+                                if(role.tags?.data?.botId == null){
+                                    ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)?.addRole(role.id)
+                                    response.respond {
+                                        content = "Role attribué pour ${user?.username}"
+                                    }
+                                }else{
+                                    response.respond {
+                                        content = "Ce role ne peut pas etre ajouté, il s'agit d'un role destiné a un bot"
+                                    }
+                                }
+
+                            }
+
+                        }
+                    }
+                }else{
+                    response.respond {
+                        content = "```Vous n'avez pas la permission de supprimer des messages```"
+                    }
+                    return@on
+                }
+            }
+
+            "unassign_role"->{
+                if(isAutorized(ctx,Permission.ManageRoles)) {
+                    val user = ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)
+                    val listRolesUser =
+                        ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)?.roles?.toList()
+
+                    val role = ctx.command.roles.get("role")!!.asRole()
+
+                    if (listRolesUser != null) {
+                        if (listRolesUser.contains(role)) {
+                            if(role.name == "@everyone"){
+                                response.respond {
+                                    content = " Vous ne pouvez pas supprimer le role everyone"
+                                }
+                            }else{
+                                if(role.tags?.data?.botId == null){
+                                    ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)?.removeRole(role.id)
+                                    response.respond {
+                                        content = "Role supprimé pour ${user?.username}"
+                                    }
+                                }else{
+                                    response.respond {
+                                        content = "Ce role ne peut pas etre supprimé, il s'agit d'un role destiné a un bot"
+                                    }
+                                }
+
+                            }
+
+
+                        } else {
+                            response.respond {
+                                content = "Le role n'est pas attribué à l'utilisateur"
+                            }
+                        }
+                    }
+                }else{
+                    response.respond {
+                        content = "```Vous n'avez pas la permission de supprimer des messages```"
+                    }
+                    return@on
+                }
+            }
 
             else -> {
                     response.respond {

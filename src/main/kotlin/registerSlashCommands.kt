@@ -1,9 +1,13 @@
 import dev.kord.core.Kord
 import dev.kord.rest.builder.interaction.*
 
+
+suspend fun clearCommands(kord: Kord){
+    kord.getGlobalApplicationCommands().collect { it.delete() }
+}
 suspend fun registerSlashCommands(kord: Kord) {
 
-    kord.getGlobalApplicationCommands().collect { it.delete() }
+    clearCommands(kord)
 
     kord.createGlobalChatInputCommand(
         "ping",
@@ -34,7 +38,7 @@ suspend fun registerSlashCommands(kord: Kord) {
     )
 
     kord.createGlobalChatInputCommand(
-        "déconnecter",
+        "disconnect",
         "quitte le vocal"
     )
 
@@ -58,6 +62,32 @@ suspend fun registerSlashCommands(kord: Kord) {
             maxValue = 100
         }
 
+    }
+
+
+    kord.createGlobalChatInputCommand(
+        "assign_role",
+        "Assign a role to a user",
+    ){
+        user("user", "The user") {
+            required = true
+        }
+        role("role", "The role") {
+            required = true
+        }
+    }
+
+
+    kord.createGlobalChatInputCommand(
+        "unassign_role",
+        "Unassign a role from a user",
+    ){
+        user("user", "The user") {
+            required = true
+        }
+        role("role", "The role") {
+            required = true
+        }
     }
 
 
