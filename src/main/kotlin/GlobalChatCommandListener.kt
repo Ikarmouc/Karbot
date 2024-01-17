@@ -1,5 +1,4 @@
-import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
-import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers
+import dev.arbjerg.lavalink.protocol.v4.LoadResult
 import dev.kord.common.Color
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Permission
@@ -13,25 +12,24 @@ import dev.kord.core.on
 import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.voice.VoiceConnection
 import dev.schlaubi.lavakord.LavaKord
-import dev.schlaubi.lavakord.kord.lavakord
-import kotlin.time.Duration.Companion.seconds
+import dev.schlaubi.lavakord.audio.Link
+import dev.schlaubi.lavakord.rest.loadItem
 import kotlinx.coroutines.flow.*
 
+
 @OptIn(KordVoice::class)
-suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowflake, VoiceConnection>) {
+suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowflake, VoiceConnection>,lavalink: LavaKord) {
 
 
-//    val connections = mutableMapOf<Snowflake, VoiceConnection>()
     kord.on<ChatInputCommandInteractionCreateEvent> {
-        // val linksMap : MutableMap<Snowflake, Link> = mutableMapOf()   //Map contenant les links de chacun des serveurs
         val response = interaction.deferPublicResponse()
         val command = interaction.command
 
         val ctx = interaction
+        val commandName = command.data.name.value
+        val guildId : Snowflake = ctx.data.guildId.value!!
 
-
-
-        when(command.data.name.value){
+        when(commandName){
             "ping" -> {
                 val resultat = "```Ping vers l'api Discord : ${response.kord.gateway.averagePing?.inWholeMilliseconds} ms```"
                 response.respond {
@@ -102,89 +100,119 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
             }
 
             "play" -> {
-                val lavalink :LavaKord
-                lavalink = ctx.kord.lavakord() {
-                        link {
-                            autoReconnect = false
-                            retry = linear(2.seconds, 50.seconds, 1)
+                // link player to the
+                val voiceConnection = connections[ctx.data.guildId.value!!]
+                // NE PAS BOUGER SINON *inserer son metal pipe*
+                val link: Link = lavalink.getLink(guildId.value)
+                if (voiceConnection == null) {
+                    val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
+                    if(voiceChannel == null){
+                        response.respond {
+                            content = "Pas dans un vocal"
+                        }
+                        return@on
+                    }else{
+                        val connection = voiceChannel.connect {
+                        }
+                        connections.put(ctx.data.guildId.value!!, connection)
+                    }
+                }
+                val song = ctx.command.strings["song"].toString()
+                val query: String
+                if (song.contains("https://")) {
+                    query = song
+                }else{
+                    query = "ytsearch: ${song}"
+                }
+
+
+                val item = lavalink.nodes.get(0).loadItem(query)
+
+                val voiceChan = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceState().getChannelOrNull()
+                if (voiceChan == null ) {
+                    response.respond{
+                        content = "Pas dans un vovo !"
+                    }
+                    return@on
+                } else {
+
+                    println("avant")
+                    link.connectAudio(voiceChan.id.value)
+                        connections.get(guildId)!!.connect()
+                    println("apres")
+
+                }
+
+                var musicTitle = ""
+                when(item){
+                    is LoadResult.TrackLoaded -> {
+                        link.player.playTrack(track = item.data)
+                        println(link.player.playingTrack?.info?.title)
+                        musicTitle = item.data.info.toString()
+                        response.respond {
+                            content = "```" +
+                                    "Musique en cours de lecture : " +
+                                    musicTitle +
+                                    "" +
+                                    "```"
+                        }
+
+                    }
+                    is LoadResult.PlaylistLoaded -> {
+
+                        val playlist = item.data.tracks
+
+                        println("Playlist chargee, taille : " + playlist.size)
+                        println(link.player.position)
+
+
+                        response.respond {
+                            content = "Playlist chargee"
+                        }
+
+                    }
+                    is LoadResult.SearchResult -> {
+                        link.player.playTrack(item.data.tracks.get(0))
+                        musicTitle = item.data.tracks.get(0).info.title
+                        response.respond {
+                            content = "```" +
+                                    "Musique en cours de lecture : " +
+                                    musicTitle +
+                                    "" +
+                                    "```"
                         }
                     }
-                    lavalink.addNode("ws://localhost:2333", "KarbotLavalink","Lavalink")
 
-                
+                    is LoadResult.NoMatches -> {
 
-                println()
-                val lavaplayerManager = DefaultAudioPlayerManager()
-                AudioSourceManagers.registerRemoteSources(lavaplayerManager)
+                    }
 
+                    is LoadResult.LoadFailed -> {
 
-                // val link: Link
-                // println(lavalink.nodes.get(0).getPlayer(ctx.data.guildId.value!!))
-                // link = lavalink.getLink(ctx.data.guildId.value!!)
+                    }
 
-
-//
-//
-//                val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
-//                if (voiceChannel == null) {
-//                    response.respond {
-//                        content = "Pas dans un vocal"
-//                    }
-//                    return@on
-//                }
-//
-//                val song = command.strings["song"]
-//                println(song)
-//                if (connections.contains(ctx.data.guildId.value!!)) {
-//                    connections.remove(ctx.data.guildId.value!!)!!.shutdown()
-//                }
-//                val player = lavaplayerManager.createPlayer()
-//                val query = "ytsearch: ${song}"
-//
-//                val item = link.loadItem(query)
-//
-//
-//
-//
-//                when(item.loadType){
-//                    ResultStatus.TRACK->{
-//                        println("track: ${item.data}")
-//                    }
-//
-//                    ResultStatus.PLAYLIST->{
-//
-//                    }
-//
-//                    ResultStatus.SEARCH->{
-//
-//                    }
-//
-//                    ResultStatus.NONE->{
-//
-//                    }
-//
-//                    ResultStatus.ERROR->{
-//
-//                    }
-//
-//                    else->{
-//
-//                    }
-//
-//                }
-
-                response.respond {
-                    content = "It's debug time my dudes !"
                 }
-                // query the player
-//                val connection = voiceChannel.connect {
-//                    // the audio provider should provide frames of audio
-//                    audioProvider { AudioFrame.fromData(player.provide()?.data) }
-//                }
-
+                println(musicTitle)
 
             }
 
+            "stop" -> {
+                val voiceConnection = connections[ctx.data.guildId.value!!]
+                // NE PAS BOUGER SINON *inserer son metal pipe*
+                val link: Link = lavalink.getLink(guildId.value)
+
+                if (voiceConnection == null) {
+                    response.respond {
+                        content = "Pas dans un vocal"
+                    }
+                }
+                if (link.player.playingTrack != null){
+                    link.player.stopTrack()
+                    response.respond {
+                        content = "```Musique stoppée```"
+                    }
+                }
+            }
             "déconnecter" -> {
 
                 val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
@@ -195,6 +223,10 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
                 }
 
                 if (connections.contains(ctx.data.guildId.value!!)) {
+
+                    if (lavalink.getLink(ctx.data.guildId.toString()).player.playingTrack != null){
+                        lavalink.getLink(ctx.data.guildId.toString()).player.stopTrack()
+                    }
                     connections.get(ctx.data.guildId.value!!)!!.leave()
                     connections.remove(ctx.data.guildId.value!!)!!.shutdown()
                     response.respond {
@@ -241,12 +273,7 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
                     val user = ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)
                     val listRolesUser =
                         ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)?.roles?.toList()
-
-
                     val role = ctx.command.roles.get("role")!!.asRole()
-
-
-                    println(role)
                     if (listRolesUser != null) {
                         if (listRolesUser.contains(role)) {
                             response.respond {
@@ -325,6 +352,52 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
                 }
             }
 
+            "pause" -> {
+                val voiceConnection = connections[ctx.data.guildId.value!!]
+                if(voiceConnection == null){
+                    response.respond {
+                        content = "```Le bot n'est pas connecté sur un vocal```"
+                    }
+                    return@on
+                }
+                val link: Link = lavalink.getLink(guildId.value)
+                link.player.pause(true)
+
+                response.respond {
+                    content = "```Pause```"
+                }
+            }
+
+            "resume" -> {
+                val voiceConnection = connections[ctx.data.guildId.value!!]
+                if(voiceConnection == null){
+                    response.respond {
+                        content = "```Le bot n'est pas connecté sur un vocal```"
+                    }
+                }
+                val link: Link = lavalink.getLink(guildId.value)
+                link.player.pause(false)
+                response.respond {
+                    content = "```Reprise```"
+                }
+            }
+            "info"->{
+                val voiceConnection = connections[ctx.data.guildId.value!!]
+                if(voiceConnection == null){
+                    response.respond {
+                        content = "```Le bot n'est pas connecté sur un vocal```"
+                    }
+                }
+                val link: Link = lavalink.getLink(guildId.value)
+                response.respond {
+                    content = "" +
+                            "```" +
+                            "Musique en cours de lecture : " + link.player.playingTrack?.info?.title +
+                            "Volume : " + link.player.volume +
+                            "Position : " + link.player.position +
+                            "```"
+                }
+            }
             else -> {
                     response.respond {
                         content = "```Erreur de commande, veuillez reessayer```"
@@ -335,9 +408,13 @@ suspend fun globalChatCommandlistener(kord: Kord,connections : MutableMap<Snowfl
         }
 
 
+        
+
     }
 
 }
+
+
 
 suspend fun isAutorized(ctx: Interaction,perm : Permission): Boolean {
     if(ctx.user.asMember(ctx.data.guildId.value!!).getPermissions().contains(perm)){

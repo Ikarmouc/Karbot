@@ -2,12 +2,13 @@ import dev.kord.core.Kord
 import dev.kord.rest.builder.interaction.*
 
 
+/*
 suspend fun clearCommands(kord: Kord){
     kord.getGlobalApplicationCommands().collect { it.delete() }
-}
+}*/
 suspend fun registerSlashCommands(kord: Kord) {
 
-    clearCommands(kord)
+    //  clearCommands(kord)
 
     kord.createGlobalChatInputCommand(
         "ping",
@@ -90,5 +91,35 @@ suspend fun registerSlashCommands(kord: Kord) {
         }
     }
 
+    kord.createGlobalMessageCommand(
+        "delete message"
+    ){
+        
+    }
+
+    kord.createGlobalChatInputCommand (
+        "stop",
+        "stop the music"
+    )
+
+    kord.createGlobalChatInputCommand(
+        "pause",
+        "pause the music"
+    )
+
+    kord.createGlobalChatInputCommand(
+        "resume",
+        "resume the music"
+    )
+
+    kord.createGlobalChatInputCommand(
+        "skip",
+        "skip the music"
+    )
+
+    kord.createGlobalChatInputCommand(
+        "info",
+        "get the track info"
+    )
 
 }

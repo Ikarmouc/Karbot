@@ -18,7 +18,7 @@ dependencies {
     implementation("dev.kord:kord-core:0.11.1")
     implementation("dev.kord:kord-voice:0.11.1")
     implementation("dev.kord:kord-core-voice:0.11.1")
-    implementation("dev.schlaubi.lavakord:kord:6.0.0")
+    implementation("dev.schlaubi.lavakord:kord:6.1.0")
     implementation("org.slf4j:slf4j-simple:2.0.9")
     implementation("com.sedmelluq:lavaplayer:1.3.78")
 }
