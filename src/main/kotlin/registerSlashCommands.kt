@@ -2,13 +2,13 @@ import dev.kord.core.Kord
 import dev.kord.rest.builder.interaction.*
 
 
-/*
-suspend fun clearCommands(kord: Kord){
-    kord.getGlobalApplicationCommands().collect { it.delete() }
-}*/
+
+//suspend fun clearCommands(kord: Kord){
+//    kord.getGlobalApplicationCommands().collect { it.delete() }
+//}
 suspend fun registerSlashCommands(kord: Kord) {
 
-    //  clearCommands(kord)
+    //clearCommands(kord)
 
     kord.createGlobalChatInputCommand(
         "ping",
@@ -121,5 +121,21 @@ suspend fun registerSlashCommands(kord: Kord) {
         "info",
         "get the track info"
     )
+
+    kord.createGlobalChatInputCommand(
+        "queue",
+        "get the queue"
+    )
+
+    kord.createGlobalChatInputCommand(
+        "volume",
+        "set the volume"
+    ){
+        integer("volume", "The volume"){
+            required = true
+            minValue = 0
+            maxValue = 100
+        }
+    }
 
 }

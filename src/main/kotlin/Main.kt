@@ -17,19 +17,20 @@ suspend fun main(args: Array<String>) {
     val kord = Kord(token = args[0])
     //val lavaplayerManager = DefaultAudioPlayerManager()
     val connections : MutableMap<Snowflake, VoiceConnection> = mutableMapOf() //Map contenant les links de chacun des serveurs
-
+    val lavalink = connectLavalink(kord)
     registerSlashCommands(kord)
-    globalChatCommandlistener(kord, connections,connectLavalink(kord))
+    globalChatCommandlistener(kord, connections,lavalink)
     globalMessageListener(kord,connections)
-    voiceActivityListener(kord,connections)
+    voiceActivityListener(kord,connections,lavalink)
     println("Bot is now running try /about for more information")
     kord.login{
         @OptIn(PrivilegedIntent::class)
         intents += Intent.MessageContent
         presence {
             status = PresenceStatus.from("online")
-            watching("vos donnéees... euh pardon vos commandes !")
+            watching("Vos commandes (/help)")
         }
+
 
     }
 }
@@ -39,7 +40,7 @@ fun connectLavalink(kord : Kord) : LavaKord {
     lavalink = kord.lavakord() {
         link {
             autoReconnect = false
-            retry = linear(2.seconds, 50.seconds, 1)
+            retry = linear(5.seconds, 20.seconds, 10)
         }
     }
     lavalink.addNode("ws://localhost:2333", "KarbotLavalink","Lavalink")
