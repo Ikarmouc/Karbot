@@ -9,18 +9,16 @@ import dev.schlaubi.lavakord.LavaKord
 import dev.schlaubi.lavakord.kord.lavakord
 import kotlin.time.Duration.Companion.seconds
 
-fun sum(firstNum: Long, secondNum: Long): String {
-    return "${firstNum + secondNum}"
-}
 @OptIn(KordVoice::class)
 suspend fun main(args: Array<String>) {
     val kord = Kord(token = args[0])
     //val lavaplayerManager = DefaultAudioPlayerManager()
     val connections : MutableMap<Snowflake, VoiceConnection> = mutableMapOf() //Map contenant les links de chacun des serveurs
+
     val lavalink = connectLavalink(kord)
     registerSlashCommands(kord)
     globalChatCommandlistener(kord, connections,lavalink)
-    globalMessageListener(kord,connections)
+    globalMessageListener(kord)
     voiceActivityListener(kord,connections,lavalink)
     println("Bot is now running try /about for more information")
     kord.login{
@@ -36,11 +34,13 @@ suspend fun main(args: Array<String>) {
 }
 
 fun connectLavalink(kord : Kord) : LavaKord {
-    val lavalink: LavaKord
-    lavalink = kord.lavakord() {
+    val lavalink: LavaKord = kord.lavakord() {
         link {
-            autoReconnect = false
-            retry = linear(5.seconds, 20.seconds, 10)
+            autoReconnect = true
+            autoMigrateOnDisconnect = false
+            resumeTimeout = 0
+            retry = linear(5.seconds, 20.seconds, 20)
+
         }
     }
     lavalink.addNode("ws://localhost:2333", "KarbotLavalink","Lavalink")

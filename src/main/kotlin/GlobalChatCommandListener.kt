@@ -1,5 +1,3 @@
-import dev.arbjerg.lavalink.protocol.v4.LoadResult
-import dev.arbjerg.lavalink.protocol.v4.Track
 import dev.kord.common.Color
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Permission
@@ -7,39 +5,23 @@ import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.behavior.channel.connect
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.interaction.Interaction
 import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.voice.VoiceConnection
 import dev.schlaubi.lavakord.LavaKord
 import dev.schlaubi.lavakord.audio.*
-import dev.schlaubi.lavakord.audio.player.applyFilters
-import dev.schlaubi.lavakord.rest.loadItem
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.runBlocking
 
-var queue = ArrayList<Track>()
-var clearQueue = false
-var listSessions = mutableMapOf<Snowflake,Node>()
-fun clearQueue() {
-    while (clearQueue) {
-        runBlocking {
-            queue.clear()
-            println("Clearing ...")
-        }
-        if(queue.size == 0 ){
-            clearQueue = false
-        }
-    }
-}
+var listSessions = mutableMapOf<Snowflake, Node>()
+var queueList = mutableMapOf<ULong, Queue>()
+
 @OptIn(KordVoice::class)
 suspend fun globalChatCommandlistener(
     kord: Kord,
     connections: MutableMap<Snowflake, VoiceConnection>,
     lavalink: LavaKord
 ) {
-
     kord.on<ChatInputCommandInteractionCreateEvent> {
         val response = interaction.deferPublicResponse()
         val command = interaction.command
@@ -47,49 +29,18 @@ suspend fun globalChatCommandlistener(
         val commandName = command.data.name.value
         val guildId: Snowflake = ctx.data.guildId.value!!
         var link: Link = lavalink.getLink(guildId.value)
-        var playing = true
-
-        link.player.on<TrackEndEvent> {
-            println("Track end")
-            println("queue : " + queue.size)
-                if (queue.isEmpty()) {
-                    return@on
-                } else if (queue.isNotEmpty()) {
-                    if (link.player.playingTrack == null && !playing) {
-                        playing = true
-                        println("queue : " + queue.size)
-                        link.player.playTrack(queue.first())
-                    }
-                }
-
-        }
-
-        link.player.on<TrackStartEvent> {
-            if(link.player.playingTrack != null && playing){
-                println("Track start")
-                if (queue.isNotEmpty()) {
-                    queue.removeAt(0)
-                }
-                playing = false
-            }
-
-        }
 
         when (commandName) {
             "ping" -> {
-                val resultat =
-                    "```Ping vers l'api Discord : ${response.kord.gateway.averagePing?.inWholeMilliseconds} ms```"
                 response.respond {
-                    content = resultat
-                }
-            }
-
-            "sum" -> {
-                val firstNum = command.integers["first_num"]!!
-                val secondNum = command.integers["second_num"]!!
-                val result: String = sum(firstNum, secondNum)
-                response.respond {
-                    content = result
+                    embeds = mutableListOf(
+                        embedMaker(
+                            title = "Requête Ping",
+                            thumbnailUrl = "https://cdn3.emoji.gg/emojis/2217-salesforce-load.gif",
+                            footer = "",
+                            description = "Ping vers l'api Discord : ${response.kord.gateway.averagePing?.inWholeMilliseconds} ms"
+                        )
+                    )
                 }
             }
 
@@ -124,7 +75,15 @@ suspend fun globalChatCommandlistener(
                     thumdnail.url = "https://cdn3.emoji.gg/emojis/2217-salesforce-load.gif"
                     embed.thumbnail = thumdnail
                     response.respond {
-                        embeds = mutableListOf(embed)
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Informations sur le bot",
+                                thumbnailUrl = "https://cdn3.emoji.gg/emojis/2217-salesforce-load.gif",
+                                footer = "",
+                                description = "Version Kord : 0.11.1 \n" + "Version bot : 0.0.3-alpha \n"
+
+                            )
+                        )
                     }
                 }
             }
@@ -133,247 +92,74 @@ suspend fun globalChatCommandlistener(
                 val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
                 if (voiceChannel == null) {
                     response.respond {
-                        content = "Viens dans un vovo ou conséquences  !"
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Erreur",
+                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                footer = "",
+                                description = "Vous n'etes pas dans un vocal"
+                            )
+                        )
                     }
                     return@on
                 }
-
                 if (connections.contains(ctx.data.guildId.value!!)) {
                     connections.remove(ctx.data.guildId.value!!)!!.shutdown()
                 }
                 val connection = voiceChannel.connect {
-
                 }
-                connections.put(ctx.data.guildId.value!!, connection)
+                connections[ctx.data.guildId.value!!] = connection
                 response.respond {
-                    content = "```Je suis la !```"
+                    embeds = mutableListOf(
+                        embedMaker(
+                            title = "Rejoindre un vocal",
+                            thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                            footer = "",
+                            description = "Le bot a rejoint le vocal !"
+                        )
+                    )
                 }
                 return@on
 
             }
 
             "play" -> {
-                // link player to the
                 val voiceConnection = connections[ctx.data.guildId.value!!]
-                // NE PAS BOUGER SINON *inserer son metal pipe*
-                link = lavalink.getLink(guildId.value)
-
                 if (voiceConnection == null) {
                     val voiceChannel =
                         ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
                     if (voiceChannel == null) {
                         response.respond {
-                            content = "Pas dans un vocal"
+                            embeds = mutableListOf(
+                                embedMaker(
+                                    title = "Erreur",
+                                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                    footer = "",
+                                    description = "Vous n'etes pas dans un vocal"
+                                )
+                            )
                         }
                         return@on
                     } else {
                         val connection = voiceChannel.connect {
                         }
-                        connections.put(ctx.data.guildId.value!!, connection)
+                        connections[ctx.data.guildId.value!!] = connection
+                        link = lavalink.getLink(guildId.value)
                     }
                 }
-                val song = ctx.command.strings["song"].toString()
-                val query: String
-                if (song.contains("https://")) {
-                    query = song
-                } else {
-                    query = "ytsearch: ${song}"
-                }
-
-
-                val item = lavalink.nodes.get(0).loadItem(query)
-
-                val voiceChan = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceState().getChannelOrNull()
-                if (voiceChan == null) {
-                    response.respond {
-                        content = "Pas dans un vovo !"
-                    }
-                    return@on
-                } else {
-                    if(!listSessions.contains(guildId)){
-                        link.connectAudio(voiceChan.id.value)
-                        connections.get(guildId)!!.connect()
-                        listSessions.put(guildId,link.node)
-                    }else{
-                        link.onNewSession(listSessions.get(guildId)!!)
-                    }
-
-                }
-
-                when (item) {
-
-                    is LoadResult.TrackLoaded -> {
-                        if (link.player.playingTrack == null) {
-                            link.player.playTrack(item.data)
-                            response.respond {
-                                content = "" +
-                                        "```" +
-                                        "Musique en cours de lecture : " + item.data.info.title +
-                                        "```"
-                            }
-                            return@on
-                        } else {
-                            queue.add(queue.size, item.data)
-                            response.respond {
-                                content = "" +
-                                        "```" +
-                                        "Musique ajoutée dans la file d'attente : " + item.data.info.title +
-                                        "```"
-                            }
-                            return@on
-                        }
-
-
-                    }
-
-                    is LoadResult.PlaylistLoaded -> {
-
-                        var playlist = item.data.tracks
-                        playlist.toMutableList().removeFirst()
-
-                        for (track in playlist) {
-                            queue.add(queue.size, track)
-                        }
-
-                        if (link.player.playingTrack == null) {
-                            link.player.playTrack(queue.first())
-                        }
-                        queue.removeAt(0)
-                        println("Playlist chargee, taille : " + queue.size)
-
-                        response.respond {
-                            content = "Playlist chargee ! Voir /queue pour voir la playlist !"
-                        }
-
-                    }
-
-                    is LoadResult.SearchResult -> {
-
-                        if (queue.isEmpty()) {
-                            if (link.player.playingTrack == null) {
-                                link.player.playTrack(item.data.tracks.get(0))
-                                response.respond {
-                                    content = "" +
-                                            "```" +
-                                            "Musique en cours de lecture : " + item.data.tracks.get(0).info.title +
-                                            "```"
-                                }
-                            } else {
-                                queue.add(queue.size, item.data.tracks.get(0))
-                                response.respond {
-                                    content = "" +
-                                            "```" +
-                                            "Musique ajoutée : " + item.data.tracks.get(0).info.title +
-                                            "```"
-                                }
-                            }
-                        } else {
-                            println("queue : " + queue.size)
-                            queue.add(queue.size, item.data.tracks.get(0))
-                            response.respond {
-                                content = "" +
-                                        "```" +
-                                        "Musique ajoutée : " + item.data.tracks.get(0).info.title +
-                                        "```"
-                            }
-                            return@on
-                        }
-
-                    }
-
-                    is LoadResult.NoMatches -> {
-                        response.respond {
-                            content = "Aucune correspondance"
-                        }
-                        return@on
-                    }
-
-                    is LoadResult.LoadFailed -> {
-                        response.respond {
-                            content = "Erreur de chargement"
-                        }
-                        return@on
-                    }
-
-                }
-
+                playMusic(lavalink, link, response, ctx, connections)
+                return@on
             }
 
             "skip" -> {
-                val voiceConnection = connections[ctx.data.guildId.value!!]
-                // NE PAS BOUGER SINON *inserer son metal pipe*
-                link = lavalink.getLink(guildId.value)
-                println("queue : " + queue.size)
-                if (voiceConnection == null) {
-                    response.respond {
-                        content = "Pas dans un vocal"
-                    }
-                    return@on
-                }
-                if (link.player.playingTrack != null) {
-                    link.player.stopTrack()
-                    response.respond {
-                        content = "```Musique passée" + "```"
-                    }
-                    return@on
-                } else {
-                    response.respond {
-                        content = "`Je ne suis pas en train de viber` <:KEKW:1034887996136226836>"     /// Should never happen
-                    }
-                    return@on
+                if (checkVoiceConnection(connections, ctx, response, kord)) {
+                    skipMusic(link, ctx, response, kord)
                 }
             }
 
             "stop" -> {
-                val voiceConnection = connections[ctx.data.guildId.value!!]
-                // NE PAS BOUGER SINON *inserer son metal pipe*
-                //val link: Link = lavalink.getLink(guildId.value)
-                if (voiceConnection == null) {
-                    response.respond {
-                        content = "Pas dans un vocal"
-                    }
-                    return@on
-                }
-                if (link.player.playingTrack != null) {
-                    // Make sure the queue is REALLY EMPTY FOR THE LOVE OF GOD
-                    clearQueue = true
-                    while (clearQueue) {
-                        runBlocking {
-                            queue.clear()
-                            println("Clearing ...")
-                        }
-                        if(queue.size == 0 ){
-                            clearQueue = false
-                        }
-                    }
-
-                    link.player.stopTrack()
-                    response.respond {
-                        content = "```Musique arrêtée```"
-                    }
-                    return@on
-                }
-            }
-
-            "déconnecter" -> {
-
-                val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
-                if (voiceChannel == null) {
-                    response.respond {
-                        content = "Viens dans un vovo ou conséquences  !"
-                    }
-                }
-
-                if (connections.contains(ctx.data.guildId.value!!)) {
-
-                    if (lavalink.getLink(ctx.data.guildId.toString()).player.playingTrack != null) {
-                        lavalink.getLink(ctx.data.guildId.toString()).player.stopTrack()
-                    }
-                    connections.get(ctx.data.guildId.value!!)!!.leave()
-                    connections.remove(ctx.data.guildId.value!!)!!.shutdown()
-                    response.respond {
-                        content = "```On me voit plus!```"
-                    }
+                if (checkVoiceConnection(connections, ctx, response, kord)) {
+                    stopMusic(link, ctx, response, kord)
                 }
             }
 
@@ -383,7 +169,14 @@ suspend fun globalChatCommandlistener(
                     val listMessage = ctx.getChannel().messages
                     if (listMessage.count() <= 1) {
                         response.respond {
-                            content = "Il n'y a pas de message"
+                            embeds = mutableListOf(
+                                embedMaker(
+                                    title = "Erreur",
+                                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                    footer = "",
+                                    description = "Il n'y a pas de message"
+                                )
+                            )
                         }
                     } else {
                         if (command.integers["number"] == null) {
@@ -398,12 +191,26 @@ suspend fun globalChatCommandlistener(
                             }
                         }
                         response.respond {
-                            content = "```${count} messages supprimés```"
+                            embeds = mutableListOf(
+                                embedMaker(
+                                    title = "Messages supprimés",
+                                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                    footer = "",
+                                    description = "```${count} messages supprimés```"
+                                )
+                            )
                         }
                     }
                 } else {
                     response.respond {
-                        content = "```Vous n'avez pas la permission de supprimer des messages```"
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Erreur",
+                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                footer = "",
+                                description = "Vous n'avez pas la permission de supprimer des messages"
+                            )
+                        )
                     }
                     return@on
                 }
@@ -412,32 +219,59 @@ suspend fun globalChatCommandlistener(
 
             "assign_role" -> {
                 if (isAutorized(ctx, Permission.ManageRoles)) {
-                    val user = ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)
+                    val user = ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)
                     val listRolesUser =
-                        ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)?.roles?.toList()
-                    val role = ctx.command.roles.get("role")!!.asRole()
+                        ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)?.roles?.toList()
+                    val role = ctx.command.roles["role"]!!.asRole()
                     if (listRolesUser != null) {
                         if (listRolesUser.contains(role)) {
                             response.respond {
-                                content = "Le role est déja attribué à l'utilisateur"
+                                embeds = mutableListOf(
+                                    embedMaker(
+                                        title = "Erreur",
+                                        thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                        footer = "",
+                                        description = "Le role est déja attribué à l'utilisateur"
+                                    )
+                                )
                             }
                         } else {
                             if (role.name == "@everyone") {
                                 response.respond {
-                                    content = " Vous ne pouvez pas ajouter le role everyone"
+                                    embeds = mutableListOf(
+                                        embedMaker(
+                                            title = "Erreur",
+                                            thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                            footer = "",
+                                            description = "Vous ne pouvez pas ajouter le role everyone"
+                                        )
+                                    )
                                 }
                             } else {
 
                                 if (role.tags?.data?.botId == null) {
-                                    ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)?.addRole(role.id)
+                                    ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)?.addRole(role.id)
                                     response.respond {
-                                        content = "Role attribué pour ${user?.username}"
+                                        embeds = mutableListOf(
+                                            embedMaker(
+                                                title = "Role attribué",
+                                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                                footer = "",
+                                                description = "Role ${role.name} ajouté pour ${user?.username}"
+                                            )
+                                        )
                                     }
                                     return@on
                                 } else {
                                     response.respond {
-                                        content =
-                                            "Ce role ne peut pas etre ajouté, il s'agit d'un role destiné a un bot"
+                                        embeds = mutableListOf(
+                                            embedMaker(
+                                                title = "Erreur",
+                                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                                footer = "",
+                                                description = "Ce role ne peut pas etre attribué, il s'agit d'un role destiné a un bot"
+                                            )
+                                        )
                                     }
                                     return@on
                                 }
@@ -448,7 +282,14 @@ suspend fun globalChatCommandlistener(
                     }
                 } else {
                     response.respond {
-                        content = "```Vous n'avez pas la permission de supprimer des messages```"
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Erreur",
+                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                footer = "",
+                                description = "Vous n'avez pas la permission d'ajouter un role"
+                            )
+                        )
                     }
                     return@on
                 }
@@ -456,29 +297,49 @@ suspend fun globalChatCommandlistener(
 
             "unassign_role" -> {
                 if (isAutorized(ctx, Permission.ManageRoles)) {
-                    val user = ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)
+                    val user = ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)
                     val listRolesUser =
-                        ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)?.roles?.toList()
+                        ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)?.roles?.toList()
 
-                    val role = ctx.command.roles.get("role")!!.asRole()
+                    val role = ctx.command.roles["role"]!!.asRole()
 
                     if (listRolesUser != null) {
                         if (listRolesUser.contains(role)) {
                             if (role.name == "@everyone") {
                                 response.respond {
-                                    content = " Vous ne pouvez pas supprimer le role everyone"
+                                    embeds = mutableListOf(
+                                        embedMaker(
+                                            title = "Erreur",
+                                            thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                            footer = "",
+                                            description = "Vous ne pouvez pas supprimer le role everyone"
+                                        )
+                                    )
                                 }
                             } else {
                                 if (role.tags?.data?.botId == null) {
-                                    ctx.command.users.get("user")?.asMember(ctx.data.guildId.value!!)
+                                    ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)
                                         ?.removeRole(role.id)
                                     response.respond {
-                                        content = "Role supprimé pour ${user?.username}"
+                                        embeds = mutableListOf(
+                                            embedMaker(
+                                                title = "Role supprimé",
+                                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                                footer = "",
+                                                description = "Role ${role.name} supprimé pour ${user?.username}"
+                                            )
+                                        )
                                     }
                                 } else {
                                     response.respond {
-                                        content =
-                                            "Ce role ne peut pas etre supprimé, il s'agit d'un role destiné a un bot"
+                                        embeds = mutableListOf(
+                                            embedMaker(
+                                                title = "Erreur",
+                                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                                footer = "",
+                                                description = "Ce role ne peut pas etre supprimé, il s'agit d'un role destiné a un bot"
+                                            )
+                                        )
                                     }
                                 }
 
@@ -487,135 +348,229 @@ suspend fun globalChatCommandlistener(
 
                         } else {
                             response.respond {
-                                content = "Le role n'est pas attribué à l'utilisateur"
+                                embeds = mutableListOf(
+                                    embedMaker(
+                                        title = "Erreur",
+                                        thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                        footer = "",
+                                        description = "Le role n'est pas attribué à l'utilisateur"
+                                    )
+                                )
                             }
                         }
                     }
                 } else {
                     response.respond {
-                        content = "```Vous n'avez pas la permission de supprimer des messages```"
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Erreur",
+                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                footer = "",
+                                description = "Vous n'avez pas la permission de supprimer un role"
+                            )
+                        )
                     }
                     return@on
                 }
             }
 
             "pause" -> {
-                val voiceConnection = connections[ctx.data.guildId.value!!]
-                if (voiceConnection == null) {
-                    response.respond {
-                        content = "```Le bot n'est pas connecté sur un vocal```"
-                    }
+                if (checkVoiceConnection(connections, ctx, response, kord)) {
+                    pauseMusic(link, response, kord)
                     return@on
                 }
-                val link: Link = lavalink.getLink(guildId.value)
-                link.player.pause(true)
+//                    link.player.pause(true)
+//                    response.respond {
+//                        embeds = mutableListOf(
+//                            embedMaker(
+//                                title = "Musique en pause",
+//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                                footer = "",
+//                                description = "Musique en pause /resume pour reprendre"
+//                            )
+//                        )
+//                    }
 
-                response.respond {
-                    content = "```Pause```"
-                }
+
+//                val voiceConnection = connections[ctx.data.guildId.value!!]
+//                if (voiceConnection == null) {
+//                    response.respond {
+//                        embeds = mutableListOf(
+//                            embedMaker(
+//                                title = "Erreur",
+//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                                footer = "",
+//                                description = "Le bot n'est pas connecté sur un vocal"
+//                            )
+//                        )
+//                    }
+//                    return@on
+//                }
+//                val link: Link = lavalink.getLink(guildId.value)
+//                    link.player.pause(true)
+//                    response.respond {
+//                        embeds = mutableListOf(
+//                            embedMaker(
+//                                title = "Musique en pause",
+//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                                footer = "",
+//                                description = "Musique en pause /resume pour reprendre"
+//                            )
+//                        )
+//                    }
+                // }
             }
 
             "resume" -> {
-                val voiceConnection = connections[ctx.data.guildId.value!!]
-                if (voiceConnection == null) {
-                    response.respond {
-                        content = "```Le bot n'est pas connecté sur un vocal```"
-                    }
+                if (checkVoiceConnection(connections, ctx, response, kord)) {
+                    resumeMusic(link, response, kord)
+                    return@on
                 }
-                val link: Link = lavalink.getLink(guildId.value)
-                link.player.pause(false)
-                response.respond {
-                    content = "```Reprise```"
-                }
+
+//                val voiceConnection = connections[ctx.data.guildId.value!!]
+//                if (voiceConnection == null) {
+//                    response.respond {
+//                        embeds = mutableListOf(
+//                            embedMaker(
+//                                title = "Erreur",
+//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                                footer = "",
+//                                description = "Le bot n'est pas connecté sur un vocal"
+//                            )
+//                        )
+//                    }
+//                }
+//                val link: Link = lavalink.getLink(guildId.value)
+//                link.player.pause(false)
+//                response.respond {
+//                    embeds = mutableListOf(
+//                        embedMaker(
+//                            title = "Musique reprise",
+//                            thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                            footer = "",
+//                            description = "Musique reprise /pause pour mettre en pause"
+//                        )
+//                    )
+//                }
             }
 
             "info" -> {
-                val voiceConnection = connections[ctx.data.guildId.value!!]
-                if (voiceConnection == null) {
-                    response.respond {
-                        content = "```Le bot n'est pas connecté sur un vocal```"
-                    }
-                }
-                val link: Link = lavalink.getLink(guildId.value)
-                response.respond {
-                    content = "" +
-                            "```" +
-                            "Musique en cours de lecture : " + link.player.playingTrack?.info?.title +
-                            "\nVolume : " + link.player.volume +
-                            "```"
-                }
 
+                if(checkVoiceConnection(connections,ctx,response,kord)){
+                    getPlayerInfo(link,kord,response)
+                }
+//                val voiceConnection = connections[ctx.data.guildId.value!!]
+//                if (voiceConnection == null) {
+//                    response.respond {
+//                        embeds = mutableListOf(
+//                            embedMaker(
+//                                title = "Erreur",
+//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                                footer = "",
+//                                description = "Le bot n'est pas connecté sur un vocal",
+//
+//                                )
+//                        )
+//                    }
+//                }
+//                if (link.player.playingTrack != null) {
+//                    response.respond {
+//                        embeds = mutableListOf(
+//                            embedMaker(
+//                                title = "Informations sur le bot",
+//                                thumbnailUrl = link.player.playingTrack!!.info.artworkUrl.toString(),
+//                                footer = "Auteur : " + link.player.playingTrack!!.info.author,
+//                                description = link.player.playingTrack!!.info.title,
+//                            )
+//                        )
+//                    }
+//                } else {
+//                    response.respond {
+//                        embeds = mutableListOf(
+//                            embedMaker(
+//                                "Erreur",
+//                                kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                                "",
+//                                "Il n'y a pas de musique en cours de lecture"
+//                            )
+//                        )
+//                    }
+//                }
             }
 
             "disconnect" -> {
                 val voiceConnection = connections[ctx.data.guildId.value!!]
                 if (voiceConnection == null) {
                     response.respond {
-                        content = "```Le bot n'est pas connecté sur un vocal```"
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Erreur",
+                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                footer = "",
+                                description = "Le bot n'est pas connecté sur un vocal"
+                            )
+                        )
                     }
-                }else {
-                    val link: Link = lavalink.getLink(guildId.value)
+                } else {
                     link.player.stopTrack()
+                    link.destroy()
                     voiceConnection.disconnect()
+                    queueList[guildId.value]!!.clearQueue()
                     connections.remove(ctx.data.guildId.value!!)!!.shutdown()
                     response.respond {
-                        content = "```Le bot est maintenant deconnecté```"
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Bot deconnecté",
+                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                footer = "",
+                                description = "Le bot est maintenant deconnecté"
+                            )
+                        )
                     }
                 }
             }
 
             "queue" -> {
-                val voiceConnection = connections[ctx.data.guildId.value!!]
-                if (voiceConnection == null) {
-                    response.respond {
-                        content = "```Le bot n'est pas connecté sur un vocal```"
-                    }
-                }
-                if(queue.isEmpty()){
-                    response.respond {
-                        content = "```La liste d'attente est vide```"
-                    }
-                    return@on
-                }
-                val link: Link = lavalink.getLink(guildId.value)
-                response.respond {
-                    content = "```Liste d'attente sur le vocal : \n" + queue.map {"\uD83D\uDCBF" + it.info.title }.joinToString("\n") + "```"
+                if(checkVoiceConnection(connections,ctx,response,kord)){
+                    getQueueList(ctx,kord,response)
                 }
             }
 
             "volume" -> {
-                if(ctx.command.integers["volume"]!! < 0 || ctx.command.integers["volume"]!! > 100){
-                    response.respond {
-                        content = "```Le volume doit etre comprise entre 0 et 100```"
-                    }
-                    return@on
+                if (checkVoiceConnection(connections, ctx, response, kord)) {
+                    setVolume(link, response, kord, ctx)
                 }
-                if(ctx.command.integers["volume"] == null){
-                    response.respond {
-                        content = "```Le volume doit etre comprise entre 0 et 100```"
-                    }
-                    return@on
+            }
 
+            "shuffle" -> {
+                if(checkVoiceConnection(connections,ctx,response,kord)){
+                    shuffleQueue(ctx,kord,response)
                 }
-                val voiceConnection = connections[ctx.data.guildId.value!!]
-                if (voiceConnection == null) {
-                    response.respond {
-                        content = "```Le bot n'est pas connecté sur un vocal```"
-                    }
-                    return@on
+            }
+
+            "repeat" -> {
+                if(checkVoiceConnection(connections,ctx,response,kord)){
+                    repeatMode(ctx,kord,response)
                 }
-                val link: Link = lavalink.getLink(guildId.value)
-                link.player.applyFilters {
-                    volume = ctx.command.integers["volume"]!!.toFloat()/100
-                }
-                response.respond {
-                    content = "```Volume mis à ${ctx.command.integers["volume"]} %```"
+            }
+
+
+            "insert" -> {
+                if(checkVoiceConnection(connections,ctx,response,kord)){
+                    insertTrack(ctx,kord,response,lavalink)
                 }
             }
 
             else -> {
                 response.respond {
-                    content = "```Erreur de commande, veuillez reessayer```"
+                    embeds = mutableListOf(
+                        embedMaker(
+                            title = "Erreur",
+                            thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                            footer = "",
+                            description = "Erreur de commande, veuillez reessayer"
+                        )
+                    )
                 }
                 error("Erreur de commande, veuillez reessayer")
 
@@ -623,18 +578,11 @@ suspend fun globalChatCommandlistener(
         }
 
 
+
+
     }
 
 }
 
-
-suspend fun isAutorized(ctx: Interaction, perm: Permission): Boolean {
-    if (ctx.user.asMember(ctx.data.guildId.value!!).getPermissions().contains(perm)) {
-        return true
-    } else {
-        return false
-    }
-
-}
 
 

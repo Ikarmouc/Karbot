@@ -1,9 +1,9 @@
 plugins {
-    kotlin("jvm") version "1.9.0"
+    kotlin("jvm") version "1.9.22"
     application
 }
 
-group = "org.example"
+group = "org.ikarmouc"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -20,7 +20,7 @@ dependencies {
     implementation("dev.kord:kord-core-voice:0.13.0")
     implementation("dev.schlaubi.lavakord:kord:6.1.0")
     implementation("org.slf4j:slf4j-simple:2.0.9")
-    implementation("com.sedmelluq:lavaplayer:1.3.77")
+    implementation("com.sedmelluq:lavaplayer:1.3.78")
 }
 
 tasks.test {

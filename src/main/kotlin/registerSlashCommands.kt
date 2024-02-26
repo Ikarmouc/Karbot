@@ -16,17 +16,6 @@ suspend fun registerSlashCommands(kord: Kord) {
     )
 
     kord.createGlobalChatInputCommand(
-        "sum",
-        "A slash command that sums two numbers"
-    ) {
-        integer("first_num", "The first number") {
-            required = true
-        }
-        integer("second_num", "The second number") {
-            required = true
-        }
-    }
-    kord.createGlobalChatInputCommand(
         "about",
         "A slash command that return a user if a user is mentionned or information about the bot"
     ){
@@ -34,13 +23,13 @@ suspend fun registerSlashCommands(kord: Kord) {
         }
     }
     kord.createGlobalChatInputCommand(
-        "rejoindre",
+        "join",
         "Join the voice channel of the user"
     )
 
     kord.createGlobalChatInputCommand(
         "disconnect",
-        "quitte le vocal"
+        "Disconnect from the vocal channel"
     )
 
     kord.createGlobalChatInputCommand(
@@ -138,4 +127,27 @@ suspend fun registerSlashCommands(kord: Kord) {
         }
     }
 
+    kord.createGlobalChatInputCommand(
+        "shuffle",
+        "shuffle the queue"
+    )
+
+    kord.createGlobalChatInputCommand(
+        "repeat",
+        "repeat the queue"
+    ){
+        boolean("repeat", "repeat the queue"){
+            required = true
+
+        }
+    }
+
+    kord.createGlobalChatInputCommand(
+        "insert",
+        "insert a track in the queue right after the current track"
+    ){
+        string("track", "The track to insert"){
+            required = true
+        }
+    }
 }
