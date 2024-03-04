@@ -1,3 +1,5 @@
+package utility
+
 import dev.kord.common.Color
 import dev.kord.common.entity.Permission
 import dev.kord.core.entity.interaction.Interaction
@@ -7,8 +9,10 @@ fun embedMaker(title: String,
                thumbnailUrl: String,
                footer: String,
                description: String,
+               fields: MutableList<EmbedBuilder.Field> = mutableListOf()
                ): EmbedBuilder {
     val embed = EmbedBuilder()
+
     embed.color = Color(blue = 255, green = 0, red = 0)
     if (thumbnailUrl != "") {
         embed.thumbnail = EmbedBuilder.Thumbnail()
@@ -25,8 +29,11 @@ fun embedMaker(title: String,
     }
     if (description != "") {
         embed.description = description
-    }
 
+    }
+    if(fields.isNotEmpty()){
+        embed.fields = fields
+    }
     return embed
 }
 

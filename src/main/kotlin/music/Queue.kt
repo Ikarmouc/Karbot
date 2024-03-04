@@ -1,3 +1,5 @@
+package music
+
 import dev.arbjerg.lavalink.protocol.v4.Track
 
 class Queue() {
@@ -31,7 +33,7 @@ class Queue() {
     }
     fun clearQueue() {
         list.clear()
-        println("Queue cleared")
+        println("music.Queue cleared")
     }
 
     fun add(track: Track) {
@@ -54,7 +56,7 @@ class Queue() {
 
     fun randomizeQueue() {
         list.shuffle()
-        println("Queue randomized")
+        println("music.Queue randomized")
     }
 
     fun addAll(tracks: List<Track>) {

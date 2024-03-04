@@ -1,3 +1,5 @@
+package listeners
+
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.event.interaction.GlobalMessageCommandInteractionCreateEvent

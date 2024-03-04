@@ -1,3 +1,5 @@
+package listeners
+
 import dev.kord.common.Color
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Permission
@@ -11,17 +13,21 @@ import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.voice.VoiceConnection
 import dev.schlaubi.lavakord.LavaKord
 import dev.schlaubi.lavakord.audio.*
+import utility.embedMaker
+import getWeather
+import utility.isAutorized
 import kotlinx.coroutines.flow.*
+import music.*
 
 var listSessions = mutableMapOf<Snowflake, Node>()
 var queueList = mutableMapOf<ULong, Queue>()
-
 @OptIn(KordVoice::class)
 suspend fun globalChatCommandlistener(
     kord: Kord,
     connections: MutableMap<Snowflake, VoiceConnection>,
     lavalink: LavaKord
 ) {
+
     kord.on<ChatInputCommandInteractionCreateEvent> {
         val response = interaction.deferPublicResponse()
         val command = interaction.command
@@ -379,46 +385,6 @@ suspend fun globalChatCommandlistener(
                     pauseMusic(link, response, kord)
                     return@on
                 }
-//                    link.player.pause(true)
-//                    response.respond {
-//                        embeds = mutableListOf(
-//                            embedMaker(
-//                                title = "Musique en pause",
-//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-//                                footer = "",
-//                                description = "Musique en pause /resume pour reprendre"
-//                            )
-//                        )
-//                    }
-
-
-//                val voiceConnection = connections[ctx.data.guildId.value!!]
-//                if (voiceConnection == null) {
-//                    response.respond {
-//                        embeds = mutableListOf(
-//                            embedMaker(
-//                                title = "Erreur",
-//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-//                                footer = "",
-//                                description = "Le bot n'est pas connecté sur un vocal"
-//                            )
-//                        )
-//                    }
-//                    return@on
-//                }
-//                val link: Link = lavalink.getLink(guildId.value)
-//                    link.player.pause(true)
-//                    response.respond {
-//                        embeds = mutableListOf(
-//                            embedMaker(
-//                                title = "Musique en pause",
-//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-//                                footer = "",
-//                                description = "Musique en pause /resume pour reprendre"
-//                            )
-//                        )
-//                    }
-                // }
             }
 
             "resume" -> {
@@ -426,32 +392,6 @@ suspend fun globalChatCommandlistener(
                     resumeMusic(link, response, kord)
                     return@on
                 }
-
-//                val voiceConnection = connections[ctx.data.guildId.value!!]
-//                if (voiceConnection == null) {
-//                    response.respond {
-//                        embeds = mutableListOf(
-//                            embedMaker(
-//                                title = "Erreur",
-//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-//                                footer = "",
-//                                description = "Le bot n'est pas connecté sur un vocal"
-//                            )
-//                        )
-//                    }
-//                }
-//                val link: Link = lavalink.getLink(guildId.value)
-//                link.player.pause(false)
-//                response.respond {
-//                    embeds = mutableListOf(
-//                        embedMaker(
-//                            title = "Musique reprise",
-//                            thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-//                            footer = "",
-//                            description = "Musique reprise /pause pour mettre en pause"
-//                        )
-//                    )
-//                }
             }
 
             "info" -> {
@@ -459,43 +399,6 @@ suspend fun globalChatCommandlistener(
                 if(checkVoiceConnection(connections,ctx,response,kord)){
                     getPlayerInfo(link,kord,response)
                 }
-//                val voiceConnection = connections[ctx.data.guildId.value!!]
-//                if (voiceConnection == null) {
-//                    response.respond {
-//                        embeds = mutableListOf(
-//                            embedMaker(
-//                                title = "Erreur",
-//                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-//                                footer = "",
-//                                description = "Le bot n'est pas connecté sur un vocal",
-//
-//                                )
-//                        )
-//                    }
-//                }
-//                if (link.player.playingTrack != null) {
-//                    response.respond {
-//                        embeds = mutableListOf(
-//                            embedMaker(
-//                                title = "Informations sur le bot",
-//                                thumbnailUrl = link.player.playingTrack!!.info.artworkUrl.toString(),
-//                                footer = "Auteur : " + link.player.playingTrack!!.info.author,
-//                                description = link.player.playingTrack!!.info.title,
-//                            )
-//                        )
-//                    }
-//                } else {
-//                    response.respond {
-//                        embeds = mutableListOf(
-//                            embedMaker(
-//                                "Erreur",
-//                                kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-//                                "",
-//                                "Il n'y a pas de musique en cours de lecture"
-//                            )
-//                        )
-//                    }
-//                }
             }
 
             "disconnect" -> {
@@ -561,6 +464,23 @@ suspend fun globalChatCommandlistener(
                 }
             }
 
+            "weather_info" -> {
+                val city = command.strings["city"]
+                if (city != null) {
+                    getWeather(city, response)
+                }else{
+                    response.respond {
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Erreur",
+                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                                footer = "",
+                                description = "Erreur, la ville n'est pas spécifiée"
+                            )
+                        )
+                    }
+                }
+            }
             else -> {
                 response.respond {
                     embeds = mutableListOf(

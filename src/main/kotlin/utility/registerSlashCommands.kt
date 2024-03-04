@@ -1,3 +1,5 @@
+package utility
+
 import dev.kord.core.Kord
 import dev.kord.rest.builder.interaction.*
 
@@ -147,6 +149,26 @@ suspend fun registerSlashCommands(kord: Kord) {
         "insert a track in the queue right after the current track"
     ){
         string("track", "The track to insert"){
+            required = true
+        }
+    }
+
+
+    kord.createGlobalChatInputCommand(
+        "url_check",
+        "Check if the url is not a malicious one"
+    )
+    {
+        string("url", "The url to check"){
+            required = true
+        }
+    }
+
+    kord.createGlobalChatInputCommand(
+        "weather_info",
+        "Get the weather of a city"
+    ){
+        string("city", "The city"){
             required = true
         }
     }
