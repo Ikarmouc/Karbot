@@ -30,6 +30,22 @@ suspend fun getWeather(city: String,response: DeferredPublicMessageInteractionRe
         method = HttpMethod.Get
     }
     val body = responseRequest.bodyAsChannel().readRemaining().readText()
+
+    if (responseRequest.status != HttpStatusCode.OK) {
+        response.respond {
+            embeds = mutableListOf(
+                embedMaker(
+                    title = "Error",
+                    thumbnailUrl = dotenv.get("ASSETS_SERVER_URL")+"/utility/error.gif",
+                    footer = "",
+                    description = "An error occurred while fetching the weather for $city, please try again later."
+                )
+            )
+
+        }
+        return
+    }
+
     val gson = Gson()
     val weather = gson.fromJson(body, WeatherData::class.java)
     var icon = weather.days?.get(0)?.icon

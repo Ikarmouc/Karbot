@@ -18,7 +18,7 @@ dependencies {
     implementation("dev.kord:kord-core:0.13.1")
     implementation("dev.kord:kord-voice:0.13.1")
     implementation("dev.kord:kord-core-voice:0.13.1")
-    implementation("dev.schlaubi.lavakord:kord:6.1.0")
+    implementation("dev.schlaubi.lavakord:kord:6.1.3")
     implementation("org.slf4j:slf4j-simple:2.0.9")
     implementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
     implementation("com.google.code.gson:gson:2.10.1")

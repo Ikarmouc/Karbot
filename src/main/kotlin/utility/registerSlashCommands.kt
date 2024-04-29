@@ -5,12 +5,7 @@ import dev.kord.rest.builder.interaction.*
 
 
 
-//suspend fun clearCommands(kord: Kord){
-//    kord.getGlobalApplicationCommands().collect { it.delete() }
-//}
 suspend fun registerSlashCommands(kord: Kord) {
-
-    //clearCommands(kord)
 
     kord.createGlobalChatInputCommand(
         "ping",
@@ -126,6 +121,7 @@ suspend fun registerSlashCommands(kord: Kord) {
             required = true
             minValue = 0
             maxValue = 100
+
         }
     }
 
@@ -163,13 +159,13 @@ suspend fun registerSlashCommands(kord: Kord) {
             required = true
         }
     }
-
     kord.createGlobalChatInputCommand(
         "weather_info",
         "Get the weather of a city"
     ){
         string("city", "The city"){
             required = true
+            autocomplete = true
         }
     }
 }

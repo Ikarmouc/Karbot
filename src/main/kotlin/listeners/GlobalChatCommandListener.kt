@@ -5,7 +5,6 @@ import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
-import dev.kord.core.behavior.channel.connect
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
@@ -13,13 +12,14 @@ import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.voice.VoiceConnection
 import dev.schlaubi.lavakord.LavaKord
 import dev.schlaubi.lavakord.audio.*
+import dotenv
 import utility.embedMaker
 import getWeather
-import utility.isAutorized
+import utility.isAuthorized
 import kotlinx.coroutines.flow.*
 import music.*
+import utility.clearMessages
 
-var listSessions = mutableMapOf<Snowflake, Node>()
 var queueList = mutableMapOf<ULong, Queue>()
 @OptIn(KordVoice::class)
 suspend fun globalChatCommandlistener(
@@ -34,17 +34,17 @@ suspend fun globalChatCommandlistener(
         val ctx = interaction
         val commandName = command.data.name.value
         val guildId: Snowflake = ctx.data.guildId.value!!
-        var link: Link = lavalink.getLink(guildId.value)
+        val link: Link = lavalink.getLink(guildId.value)
 
         when (commandName) {
             "ping" -> {
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            title = "Requête Ping",
+                            title = "Ping request",
                             thumbnailUrl = "https://cdn3.emoji.gg/emojis/2217-salesforce-load.gif",
                             footer = "",
-                            description = "Ping vers l'api Discord : ${response.kord.gateway.averagePing?.inWholeMilliseconds} ms"
+                            description = "Discord Api latency : ${response.kord.gateway.averagePing?.inWholeMilliseconds} ms"
                         )
                     )
                 }
@@ -57,10 +57,10 @@ suspend fun globalChatCommandlistener(
                 if (customUsername == null) {
                     customUsername = command.users["user"]?.username
                 }
-                embed.title = "Informations sur l'utilisateur : ${command.users["user"]?.username}"
+                embed.title = "About user : ${command.users["user"]?.username}"
                 embed.description = "```" +
-                        "Nom : ${customUsername}\n" +
-                        "Identifiant : ${command.users["user"]?.username}\n ```"
+                        "Server name : ${customUsername}\n" +
+                        "Id : ${command.users["user"]?.username}\n ```"
 
                 if (command.users["user"] != null) {
                     val thumbnail = EmbedBuilder.Thumbnail()
@@ -72,9 +72,9 @@ suspend fun globalChatCommandlistener(
                     }
                 } else {
                     val pingDiscord: String = response.kord.gateway.averagePing?.inWholeMilliseconds.toString()
-                    embed.title = "Informations sur le bot : "
-                    embed.description = "```" + "Version Kord : 0.11.1 \n" + "Version bot : 0.0.3-alpha \n" + "```"
-                    embed.field("Ping vers l'api Discord", false) {
+                    embed.title = "About the bot : "
+                    embed.description = "```" + "Kord version : 0.11.1 \n" + "${dotenv.get("BOT_VERSION")}\n" + "```"
+                    embed.field("Discord api latency", false) {
                         "⬆⬇ $pingDiscord ms"
                     }
                     val thumdnail = EmbedBuilder.Thumbnail()
@@ -83,77 +83,56 @@ suspend fun globalChatCommandlistener(
                     response.respond {
                         embeds = mutableListOf(
                             embedMaker(
-                                title = "Informations sur le bot",
+                                title = "About the bot",
                                 thumbnailUrl = "https://cdn3.emoji.gg/emojis/2217-salesforce-load.gif",
                                 footer = "",
-                                description = "Version Kord : 0.11.1 \n" + "Version bot : 0.0.3-alpha \n"
-
+                                description = "Kord version : 0.11.1 \n" + "Bot version: ${dotenv.get("BOT_VERSION")}\n"
                             )
                         )
                     }
                 }
             }
 
-            "rejoindre" -> {
-                val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
-                if (voiceChannel == null) {
-                    response.respond {
-                        embeds = mutableListOf(
-                            embedMaker(
-                                title = "Erreur",
-                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                                footer = "",
-                                description = "Vous n'etes pas dans un vocal"
-                            )
-                        )
-                    }
-                    return@on
-                }
-                if (connections.contains(ctx.data.guildId.value!!)) {
-                    connections.remove(ctx.data.guildId.value!!)!!.shutdown()
-                }
-                val connection = voiceChannel.connect {
-                }
-                connections[ctx.data.guildId.value!!] = connection
-                response.respond {
-                    embeds = mutableListOf(
-                        embedMaker(
-                            title = "Rejoindre un vocal",
-                            thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                            footer = "",
-                            description = "Le bot a rejoint le vocal !"
-                        )
-                    )
-                }
-                return@on
-
+            "join" -> {
+                joinChannel(
+                    ctx = ctx,
+                    kord = kord,
+                    connections = connections,
+                    response = response
+                )
             }
 
             "play" -> {
-                val voiceConnection = connections[ctx.data.guildId.value!!]
-                if (voiceConnection == null) {
-                    val voiceChannel =
-                        ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
-                    if (voiceChannel == null) {
-                        response.respond {
-                            embeds = mutableListOf(
-                                embedMaker(
-                                    title = "Erreur",
-                                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                                    footer = "",
-                                    description = "Vous n'etes pas dans un vocal"
-                                )
-                            )
-                        }
-                        return@on
-                    } else {
-                        val connection = voiceChannel.connect {
-                        }
-                        connections[ctx.data.guildId.value!!] = connection
-                        link = lavalink.getLink(guildId.value)
-                    }
-                }
-                playMusic(lavalink, link, response, ctx, connections)
+//                val voiceConnection = connections[ctx.data.guildId.value!!]
+//                if (voiceConnection == null) {
+//                    val voiceChannel =
+//                        ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
+//                    if (voiceChannel == null) {
+//                        response.respond {
+//                            embeds = mutableListOf(
+//                                embedMaker(
+//                                    title = "Error",
+//                                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                                    footer = "",
+//                                    description = "You must be in a vocal channel to use this command"
+//                                )
+//                            )
+//                        }
+//                        return@on
+//                    } else {
+//                        val connection = voiceChannel.connect {
+//                        }
+//                        connections[ctx.data.guildId.value!!] = connection
+//                        link = lavalink.getLink(guildId.value)
+//                    }
+//                }
+//                joinChannel(
+//                    ctx = ctx,
+//                    kord = kord,
+//                    connections = connections,
+//                    response = response
+//                )
+                playMusic(lavalink = lavalink, response = response, ctx = ctx, connections = connections)
                 return@on
             }
 
@@ -170,61 +149,15 @@ suspend fun globalChatCommandlistener(
             }
 
             "clear" -> {
-                if (isAutorized(ctx, Permission.ManageMessages)) {
-                    var count = 0
-                    val listMessage = ctx.getChannel().messages
-                    if (listMessage.count() <= 1) {
-                        response.respond {
-                            embeds = mutableListOf(
-                                embedMaker(
-                                    title = "Erreur",
-                                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                                    footer = "",
-                                    description = "Il n'y a pas de message"
-                                )
-                            )
-                        }
-                    } else {
-                        if (command.integers["number"] == null) {
-                            while (ctx.getChannelOrNull()?.messages?.count()!! > 1) {
-                                ctx.getChannel().deleteMessage(ctx.getChannel().messages.last().id)
-                                count++
-                            }
-                        } else {
-                            while (count < command.integers["number"]!!) {
-                                ctx.getChannel().deleteMessage(ctx.getChannel().messages.last().id)
-                                count++
-                            }
-                        }
-                        response.respond {
-                            embeds = mutableListOf(
-                                embedMaker(
-                                    title = "Messages supprimés",
-                                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                                    footer = "",
-                                    description = "```${count} messages supprimés```"
-                                )
-                            )
-                        }
-                    }
-                } else {
-                    response.respond {
-                        embeds = mutableListOf(
-                            embedMaker(
-                                title = "Erreur",
-                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                                footer = "",
-                                description = "Vous n'avez pas la permission de supprimer des messages"
-                            )
-                        )
-                    }
-                    return@on
-                }
-
+                clearMessages(
+                    ctx = ctx,
+                    response = response,
+                    kord = kord,
+                    command = command
+                )
             }
-
             "assign_role" -> {
-                if (isAutorized(ctx, Permission.ManageRoles)) {
+                if (isAuthorized(ctx, Permission.ManageRoles)) {
                     val user = ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)
                     val listRolesUser =
                         ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)?.roles?.toList()
@@ -234,10 +167,10 @@ suspend fun globalChatCommandlistener(
                             response.respond {
                                 embeds = mutableListOf(
                                     embedMaker(
-                                        title = "Erreur",
+                                        title = "Error",
                                         thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                         footer = "",
-                                        description = "Le role est déja attribué à l'utilisateur"
+                                        description = "Role is already assigned to the user"
                                     )
                                 )
                             }
@@ -246,10 +179,10 @@ suspend fun globalChatCommandlistener(
                                 response.respond {
                                     embeds = mutableListOf(
                                         embedMaker(
-                                            title = "Erreur",
+                                            title = "Error",
                                             thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                             footer = "",
-                                            description = "Vous ne pouvez pas ajouter le role everyone"
+                                            description = "You can't assign the @everyone role"
                                         )
                                     )
                                 }
@@ -260,10 +193,10 @@ suspend fun globalChatCommandlistener(
                                     response.respond {
                                         embeds = mutableListOf(
                                             embedMaker(
-                                                title = "Role attribué",
+                                                title = "Role added",
                                                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                                 footer = "",
-                                                description = "Role ${role.name} ajouté pour ${user?.username}"
+                                                description = "Role ${role.name} added for ${user?.username}"
                                             )
                                         )
                                     }
@@ -272,10 +205,10 @@ suspend fun globalChatCommandlistener(
                                     response.respond {
                                         embeds = mutableListOf(
                                             embedMaker(
-                                                title = "Erreur",
+                                                title = "Error",
                                                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                                 footer = "",
-                                                description = "Ce role ne peut pas etre attribué, il s'agit d'un role destiné a un bot"
+                                                description = "This role can't be added, it's a bot role"
                                             )
                                         )
                                     }
@@ -290,10 +223,10 @@ suspend fun globalChatCommandlistener(
                     response.respond {
                         embeds = mutableListOf(
                             embedMaker(
-                                title = "Erreur",
+                                title = "Error",
                                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                 footer = "",
-                                description = "Vous n'avez pas la permission d'ajouter un role"
+                                description = "You don't have the permission to assign a role"
                             )
                         )
                     }
@@ -302,7 +235,7 @@ suspend fun globalChatCommandlistener(
             }
 
             "unassign_role" -> {
-                if (isAutorized(ctx, Permission.ManageRoles)) {
+                if (isAuthorized(ctx, Permission.ManageRoles)) {
                     val user = ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)
                     val listRolesUser =
                         ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)?.roles?.toList()
@@ -315,10 +248,10 @@ suspend fun globalChatCommandlistener(
                                 response.respond {
                                     embeds = mutableListOf(
                                         embedMaker(
-                                            title = "Erreur",
+                                            title = "Error",
                                             thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                             footer = "",
-                                            description = "Vous ne pouvez pas supprimer le role everyone"
+                                            description = "You can't remove the @everyone role"
                                         )
                                     )
                                 }
@@ -329,10 +262,10 @@ suspend fun globalChatCommandlistener(
                                     response.respond {
                                         embeds = mutableListOf(
                                             embedMaker(
-                                                title = "Role supprimé",
+                                                title = "Role removed",
                                                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                                 footer = "",
-                                                description = "Role ${role.name} supprimé pour ${user?.username}"
+                                                description = "Role ${role.name} removed for ${user?.username}"
                                             )
                                         )
                                     }
@@ -340,10 +273,10 @@ suspend fun globalChatCommandlistener(
                                     response.respond {
                                         embeds = mutableListOf(
                                             embedMaker(
-                                                title = "Erreur",
+                                                title = "Error",
                                                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                                 footer = "",
-                                                description = "Ce role ne peut pas etre supprimé, il s'agit d'un role destiné a un bot"
+                                                description = "You can't remove a bot role"
                                             )
                                         )
                                     }
@@ -356,10 +289,10 @@ suspend fun globalChatCommandlistener(
                             response.respond {
                                 embeds = mutableListOf(
                                     embedMaker(
-                                        title = "Erreur",
+                                        title = "Error",
                                         thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                         footer = "",
-                                        description = "Le role n'est pas attribué à l'utilisateur"
+                                        description = "Role is not assigned to the user"
                                     )
                                 )
                             }
@@ -369,10 +302,10 @@ suspend fun globalChatCommandlistener(
                     response.respond {
                         embeds = mutableListOf(
                             embedMaker(
-                                title = "Erreur",
+                                title = "Error",
                                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                 footer = "",
-                                description = "Vous n'avez pas la permission de supprimer un role"
+                                description = "You don't have the permission to remove a role"
                             )
                         )
                     }
@@ -389,7 +322,7 @@ suspend fun globalChatCommandlistener(
 
             "resume" -> {
                 if (checkVoiceConnection(connections, ctx, response, kord)) {
-                    resumeMusic(link, response, kord)
+                    resumeMusic(link, response)
                     return@on
                 }
             }
@@ -407,10 +340,10 @@ suspend fun globalChatCommandlistener(
                     response.respond {
                         embeds = mutableListOf(
                             embedMaker(
-                                title = "Erreur",
+                                title = "Error",
                                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                 footer = "",
-                                description = "Le bot n'est pas connecté sur un vocal"
+                                description = "The bot is not connected to a vocal channel"
                             )
                         )
                     }
@@ -418,15 +351,17 @@ suspend fun globalChatCommandlistener(
                     link.player.stopTrack()
                     link.destroy()
                     voiceConnection.disconnect()
-                    queueList[guildId.value]!!.clearQueue()
+                    if(queueList.contains(guildId.value)){
+                        queueList[guildId.value]!!.clearQueue()
+                    }
                     connections.remove(ctx.data.guildId.value!!)!!.shutdown()
                     response.respond {
                         embeds = mutableListOf(
                             embedMaker(
-                                title = "Bot deconnecté",
+                                title = "Bot disconnected",
                                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                                 footer = "",
-                                description = "Le bot est maintenant deconnecté"
+                                description = "The bot has been disconnected from the vocal channel"
                             )
                         )
                     }
@@ -465,34 +400,21 @@ suspend fun globalChatCommandlistener(
             }
 
             "weather_info" -> {
-                val city = command.strings["city"]
-                if (city != null) {
-                    getWeather(city, response)
-                }else{
-                    response.respond {
-                        embeds = mutableListOf(
-                            embedMaker(
-                                title = "Erreur",
-                                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                                footer = "",
-                                description = "Erreur, la ville n'est pas spécifiée"
-                            )
-                        )
-                    }
-                }
+                val city = command.strings["city"].toString().uppercase()
+                getWeather(city, response)
             }
             else -> {
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            title = "Erreur",
+                            title = "Error",
                             thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                             footer = "",
-                            description = "Erreur de commande, veuillez reessayer"
+                            description = "Command error, please try again"
                         )
                     )
                 }
-                error("Erreur de commande, veuillez reessayer")
+                error("Error with command $commandName, no such command exists.")
 
             }
         }

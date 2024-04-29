@@ -10,12 +10,15 @@ import dev.schlaubi.lavakord.kord.lavakord
 import kotlin.time.Duration.Companion.seconds
 import io.github.cdimascio.dotenv.Dotenv
 import listeners.globalChatCommandlistener
+import listeners.globalChatListener
 import listeners.globalMessageListener
 import listeners.voiceActivityListener
+import utility.registerAutoCompleteCommands
 import utility.registerSlashCommands
 
 @OptIn(KordVoice::class)
 suspend fun main() {
+
     val dotenv = Dotenv.load()
     if(dotenv.get("BOT_TOKEN") == null){
         println("Please create a .env file with a BOT_TOKEN variable")
@@ -23,15 +26,18 @@ suspend fun main() {
     }
     val kord = Kord(token = dotenv.get("BOT_TOKEN")!!)
     val presenceText: String
+    val connections : MutableMap<Snowflake, VoiceConnection> = mutableMapOf() //Map contenant les links de chacun des serveurs
+    val lavalink = connectLavalink(kord)
     if(dotenv.get("DEV_MODE") == "true"){
         presenceText = "Dev mode"
+        kord.getGlobalApplicationCommands().collect {it.delete()}
+        registerSlashCommands(kord)
     }else{
         presenceText = "Vos commandes (/help)"
     }
-    //val lavaplayerManager = DefaultAudioPlayerManager()
-    val connections : MutableMap<Snowflake, VoiceConnection> = mutableMapOf() //Map contenant les links de chacun des serveurs
-    val lavalink = connectLavalink(kord)
-    registerSlashCommands(kord)
+    
+    registerAutoCompleteCommands(kord)
+    globalChatListener(kord)
     globalChatCommandlistener(kord, connections,lavalink)
     globalMessageListener(kord)
     voiceActivityListener(kord,connections,lavalink)
@@ -43,8 +49,6 @@ suspend fun main() {
             status = PresenceStatus.from("online")
             watching(presenceText)
         }
-
-
     }
 }
 

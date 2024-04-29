@@ -6,13 +6,11 @@ class Queue() {
     private val list = mutableListOf<Track>()
     val size: Int
         get() = list.size
-    val isEmpty: Boolean
 
     var repeat: Boolean
     var position: Int = 0
 
     init {
-        isEmpty = list.isEmpty()
         repeat = false
     }
 
@@ -20,17 +18,6 @@ class Queue() {
         repeat = value
     }
 
-    fun getTrackPosition(): Int {
-        return position
-    }
-    fun incrementPosition() {
-        if(position < size){
-            position++
-        }
-    }
-    fun getRepeatTrack(): Boolean {
-        return repeat
-    }
     fun clearQueue() {
         list.clear()
         println("music.Queue cleared")
@@ -56,12 +43,10 @@ class Queue() {
 
     fun randomizeQueue() {
         list.shuffle()
-        println("music.Queue randomized")
     }
 
     fun addAll(tracks: List<Track>) {
         list.addAll(tracks)
-        println("Tracks added to queue")
     }
 
     fun isQueueNotEmpty(): Boolean {
@@ -72,9 +57,5 @@ class Queue() {
         return list.isEmpty()
     }
 
-//    fun addFirst(track: Track) {
-//        list.add(0, track)
-//        println("Track added to queue")
-//    }
 
 }

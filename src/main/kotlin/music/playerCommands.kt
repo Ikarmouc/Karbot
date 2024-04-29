@@ -5,6 +5,7 @@ import dev.arbjerg.lavalink.protocol.v4.Track
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
+import dev.kord.core.behavior.channel.connect
 import dev.kord.core.behavior.interaction.response.DeferredPublicMessageInteractionResponseBehavior
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
@@ -13,55 +14,208 @@ import dev.schlaubi.lavakord.LavaKord
 import dev.schlaubi.lavakord.audio.Link
 import dev.schlaubi.lavakord.audio.player.applyFilters
 import dev.schlaubi.lavakord.rest.loadItem
+import dotenv
 import utility.embedMaker
-import listeners.listSessions
 import listeners.queueList
 
+
+//@OptIn(KordVoice::class)
+//suspend fun playMusic(
+//    lavalink: LavaKord,
+//    response: DeferredPublicMessageInteractionResponseBehavior,
+//    ctx: ChatInputCommandInteraction,
+//    connections: MutableMap<Snowflake, VoiceConnection>,
+//    guildId: Snowflake,
+//){
+//
+//    // link player to the
+//    val voiceConnection = connections[ctx.data.guildId.value!!]
+//    // NE PAS BOUGER SINON *inserer son metal pipe*
+//    val link = lavalink.getLink(guildId.value)
+//
+//    if (voiceConnection == null) {
+//        val voiceChannel =
+//            ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
+//        if (voiceChannel == null) {
+//            response.respond {
+//                content = "Pas dans un vocal"
+//            }
+//            return
+//        } else {
+//            val connection = voiceChannel.connect {
+//            }
+//            connections.put(ctx.data.guildId.value!!, connection)
+//        }
+//    }
+//    val song = ctx.command.strings["song"].toString()
+//    val query: String
+//    if (song.contains("https://")) {
+//        query = song
+//    } else {
+//        query = "ytsearch: ${song}"
+//    }
+//
+//
+//    val item = lavalink.nodes.get(0).loadItem(query)
+//
+//    val voiceChan = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceState().getChannelOrNull()
+//    if (voiceChan == null) {
+//        response.respond {
+//            content = "Pas dans un vovo !"
+//        }
+//        return
+//    } else {
+//        if(!listSessions.contains(guildId)){
+//            link.connectAudio(voiceChan.id.value)
+//            connections.get(guildId)!!.connect()
+//            listSessions.put(guildId,link.node)
+//        }else{
+//            link.onNewSession(listSessions.get(guildId)!!)
+//        }
+//
+//    }
+//
+//    when (item) {
+//
+//        is LoadResult.TrackLoaded -> {
+//            if (link.player.playingTrack == null) {
+//                link.player.playTrack(item.data)
+//                response.respond {
+//                    content = "" +
+//                            "```" +
+//                            "Musique en cours de lecture : " + item.data.info.title +
+//                            "```"
+//                }
+//                return
+//            } else {
+//                response.respond {
+//                    content = "" +
+//                            "```" +
+//                            "Musique ajoutée dans la file d'attente : " + item.data.info.title +
+//                            "```"
+//                }
+//                return
+//            }
+//
+//
+//        }
+//
+//        is LoadResult.PlaylistLoaded -> {
+//
+////            var playlist = item.data.tracks
+////            playlist.toMutableList().removeFirst()
+////
+//
+//            response.respond {
+//                content = "Playlist chargee ! Voir /queue pour voir la playlist !"
+//            }
+//
+//        }
+//
+//        is LoadResult.SearchResult -> {
+//
+//
+//                if (link.player.playingTrack == null) {
+//                    link.player.playTrack(item.data.tracks.get(0))
+//                    response.respond {
+//                        content = "" +
+//                                "```" +
+//                                "Musique en cours de lecture : " + item.data.tracks.get(0).info.title +
+//                                "```"
+//                    }
+//            }
+//
+//        }
+//
+//        is LoadResult.NoMatches -> {
+//            response.respond {
+//                content = "Aucune correspondance"
+//            }
+//            return
+//        }
+//
+//        is LoadResult.LoadFailed -> {
+//            response.respond {
+//                content = "Erreur de chargement"
+//            }
+//            return
+//        }
+//
+//    }
+//}
 
 @OptIn(KordVoice::class)
 suspend fun playMusic(
     lavalink: LavaKord,
-    link: Link,
     response: DeferredPublicMessageInteractionResponseBehavior,
     ctx: ChatInputCommandInteraction,
     connections: MutableMap<Snowflake, VoiceConnection>
 ) {
+
     val guildId = ctx.data.guildId.value!!
-    val song = ctx.command.strings["song"].toString()
-    val query: String = if (song.contains("https://")) {
-        song
-    } else {
-        "ytsearch: $song"
+    // link player to the
+    val voiceConnection = connections[ctx.data.guildId.value!!]
+    // NE PAS BOUGER SINON *inserer son metal pipe*
+    val link: Link = lavalink.getLink(ctx.data.guildId.value.toString())
+    if (voiceConnection == null) {
+        val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
+        if(voiceChannel == null){
+            response.respond {
+                embeds = mutableListOf(
+                    embedMaker(
+                        title = "Error",
+                        thumbnailUrl = ctx.kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                        footer = "",
+                        description = "You need to be in a voice channel to use this command"
+                    )
+                )
+                return
+            }
+
+        }else{
+            val connection = voiceChannel.connect {
+            }
+            connections[ctx.data.guildId.value!!] = connection
+        }
     }
-    val item = lavalink.nodes[0].loadItem(query)
+    val song = ctx.command.strings["song"].toString()
+    val query: String
+    if (song.contains("https://")) {
+        query = song
+    }else{
+        query = "ytsearch: ${song}"
+    }
+
+    val item = lavalink.nodes.get(0).loadItem(query)
+
     val voiceChan = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceState().getChannelOrNull()
-    if (voiceChan == null) {
-        response.respond {
-            embeds = mutableListOf(embedMaker("Erreur", "", "", "Vous n'etes pas sur un vocal !"))
+    if (voiceChan == null ) {
+        response.respond{
+            embeds = mutableListOf(
+                embedMaker(
+                    title = "Error",
+                    thumbnailUrl = ctx.kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                    footer = "",
+                    description = "The bot is not connected to a voice channel"
+                )
+            )
         }
-
+        return
     } else {
-        if (!listSessions.contains(guildId)) {
+            connections[ctx.data.guildId.value]!!.connect()
             link.connectAudio(voiceChan.id.value)
-            connections[guildId]!!.connect()
-            listSessions[guildId] = link.node
-        } else {
-            //link.onNewSession(listSessions.get(guildId)!!)
-        }
-
     }
 
     when (item) {
-
-
         is LoadResult.TrackLoaded -> {
             if (link.player.playingTrack == null) {
-                println("Playing track on guild " + ctx.getChannel().asChannel().data.name.value!!)
+                println("Playing '${item.data.info.title}' on guild " + ctx.getChannel().asChannel().data.name.value!!)
                 link.player.playTrack(item.data)
+
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            title = "Musique en cours de lecture",
+                            title = "Music playing",
                             thumbnailUrl = item.data.info.artworkUrl.toString(),
                             footer = "Author : " + item.data.info.author,
                             description = item.data.info.title
@@ -80,7 +234,7 @@ suspend fun playMusic(
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            title = "Musique ajoutée dans la file d'attente",
+                            title = "Music added to queue",
                             thumbnailUrl = item.data.info.artworkUrl.toString(),
                             footer = item.data.info.author, description = item.data.info.title
                         )
@@ -113,10 +267,10 @@ suspend fun playMusic(
             response.respond {
                 embeds = mutableListOf(
                     embedMaker(
-                        "Playlist chargee !",
-                        "",
-                        "",
-                        "Voir /queue pour voir la playlist !"
+                        title = "Playlist loaded !",
+                        thumbnailUrl = ctx.kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                        description = "See /queue to see the playlist !",
+                        footer = "Number of tracks : " + item.data.tracks.size.toString()
                     )
                 )
             }
@@ -124,17 +278,17 @@ suspend fun playMusic(
         }
 
         is LoadResult.SearchResult -> {
-
             if (!queueList.contains(guildId.value)) {
                 queueList[guildId.value] = Queue()
             }
             if (queueList[guildId.value]!!.isQueueEmpty()) {
                 if (link.player.playingTrack == null) {
                     link.player.playTrack(item.data.tracks[0])
+                    println(link.state)
                     response.respond {
                         embeds = mutableListOf(
                             embedMaker(
-                                title = "Musique en cours de lecture",
+                                title = "Music playing",
                                 thumbnailUrl = item.data.tracks[0].info.artworkUrl.toString(),
                                 footer = "Author : " + item.data.tracks[0].info.author,
                                 description = item.data.tracks[0].info.title
@@ -152,7 +306,7 @@ suspend fun playMusic(
                     response.respond {
                         embeds = mutableListOf(
                             embedMaker(
-                                title = "Musique ajoutée dans la file d'attente",
+                                title = "Music added to queue",
                                 thumbnailUrl = item.data.tracks[0].info.artworkUrl.toString(),
                                 footer = "Author : " + item.data.tracks[0].info.author,
                                 description = item.data.tracks[0].info.title
@@ -169,10 +323,10 @@ suspend fun playMusic(
             response.respond {
                 embeds = mutableListOf(
                     embedMaker(
-                        "Erreur",
-                        "",
-                        "",
-                        "Aucun résultat pour cette requête. Veuillez reessayer !"
+                        title = "Error",
+                        thumbnailUrl = ctx.kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                        footer = "",
+                        description = "No matches found for this query. Please try again !"
                     )
                 )
             }
@@ -180,7 +334,12 @@ suspend fun playMusic(
 
         is LoadResult.LoadFailed -> {
             response.respond {
-                embeds = mutableListOf(embedMaker("Erreur", "", "", "Erreur de chargement"))
+                embeds = mutableListOf(
+                    embedMaker(
+                        title = "Erreur",
+                        thumbnailUrl = ctx.kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                        footer = "",
+                        description = "Error while loading the track"))
             }
         }
     }
@@ -199,10 +358,10 @@ suspend fun checkVoiceConnection(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    title = "Erreur",
+                    title = "Error",
                     thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                     footer = "",
-                    description = "Le bot n'est pas connecté sur un vocal"
+                    description = "The bot is not connected to a voice channel"
                 )
             )
         }
@@ -229,7 +388,7 @@ suspend fun stopMusic(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    title = "Musique arrêtée",
+                    title = "Music stopped",
                     thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                     footer = "",
                     description = ""
@@ -252,7 +411,7 @@ suspend fun skipMusic(
             response.respond {
                 embeds = mutableListOf(
                     embedMaker(
-                        title = "Musique passée",
+                        title = "Music skipped",
                         thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                         footer = "",
                         description = ""
@@ -264,7 +423,7 @@ suspend fun skipMusic(
             response.respond {
                 embeds = mutableListOf(
                     embedMaker(
-                        title = "Musique passée",
+                        title = "Music skipped",
                         thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                         footer = "",
                         description = ""
@@ -277,10 +436,10 @@ suspend fun skipMusic(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    title = "Erreur",
-                    thumbnailUrl = "https://tenor.com/view/kekw-twitch-twitchtv-twitch-emote-kek-gif-19085736",
+                    title = "Error",
+                    thumbnailUrl = "${dotenv.get("ASSETS_SERVER_URL")}/utility/kekw.gif",
                     footer = "",
-                    description = "Il n'y a pas de musique en cours de lecture"
+                    description = "There is no music playing"
                 )
             )
         }
@@ -292,16 +451,15 @@ suspend fun skipMusic(
 suspend fun resumeMusic(
     link: Link,
     response: DeferredPublicMessageInteractionResponseBehavior,
-    kord: Kord
 ) {
     link.player.pause(false)
     response.respond {
         embeds = mutableListOf(
             embedMaker(
-                title = "Musique reprise",
-                thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                title = "Music resumed",
+                thumbnailUrl = link.player.playingTrack!!.info.artworkUrl.toString(),
                 footer = "",
-                description = "Musique reprise /pause pour mettre en pause"
+                description = "Music resumed type /pause to pause the music"
             )
         )
     }
@@ -316,10 +474,10 @@ suspend fun pauseMusic(
     response.respond {
         embeds = mutableListOf(
             embedMaker(
-                title = "Musique mise en pause",
+                title = "Music paused",
                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                 footer = "",
-                description = "Musique mise en pause /resume pour reprendre"
+                description = "Music paused type /resume to resume the music"
             )
         )
     }
@@ -335,10 +493,10 @@ suspend fun setVolume(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    title = "Erreur",
+                    title = "Error",
                     thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                     footer = "",
-                    description = "Le volume doit etre compris entre 0 et 100"
+                    description = "Volume must be between 0 and 100"
                 )
             )
         }
@@ -350,10 +508,10 @@ suspend fun setVolume(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    title = "Volume",
+                    title = "Volume changed",
                     thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                     footer = "",
-                    description = "Volume mis à ${ctx.command.integers["volume"]} %"
+                    description = "Volume set to ${ctx.command.integers["volume"]} %"
                 )
             )
         }
@@ -372,10 +530,10 @@ suspend fun shuffleQueue(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    title = "File d'attente",
+                    title = "Queue shuffled",
                     thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                     footer = "",
-                    description = "Ordre de la file d'attente changé aléatoirement"
+                    description = "Queue has been shuffled ! All tracks are now in a random order"
                 )
             )
         }
@@ -383,10 +541,10 @@ suspend fun shuffleQueue(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    title = "Erreur",
+                    title = "Error",
                     thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                     footer = "",
-                    description = "Il n'y a pas de musique dans la file d'attente"
+                    description = "There is no music in the queue to shuffle !"
                 )
             )
         }
@@ -404,10 +562,10 @@ suspend fun repeatMode(
             response.respond {
                 embeds = mutableListOf(
                     embedMaker(
-                        title = "Mode répétition",
+                        title = "Repeat mode",
                         thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                         footer = "",
-                        description = "Mode répétition activé"
+                        description = "Repeat mode enabled"
                     )
                 )
             }
@@ -416,10 +574,10 @@ suspend fun repeatMode(
             response.respond {
                 embeds = mutableListOf(
                     embedMaker(
-                        title = "Mode répétition",
+                        title = "Repeat mode",
                         thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                         footer = "",
-                        description = "Mode répétition desactivé"
+                        description = "Repeat mode disabled"
                     )
                 )
             }
@@ -437,10 +595,10 @@ suspend fun getQueueList(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    title = "Erreur",
+                    title = "Error",
                     thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
                     footer = "",
-                    description = "Il n'y a pas de musique dans la file d'attente"
+                    description = "There is no music in the queue !"
                 )
             )
         }
@@ -449,7 +607,7 @@ suspend fun getQueueList(
     val listText: String
     if (queueList.size > 20) {
         val shortPlaylistList = ArrayList<Track>()
-        for (i in 0..20) {
+        for (i in 0..10) {
             shortPlaylistList.add(queueList[ctx.data.guildId.value?.value]!!.get(i))
         }
         listText = shortPlaylistList.joinToString("\n") { "💿 " + it.info.title }
@@ -459,9 +617,9 @@ suspend fun getQueueList(
     response.respond {
         embeds = mutableListOf(
             embedMaker(
-                title = "File d'attente",
+                title = "Queue",
                 thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                footer = "",
+                footer = queueList[ctx.data.guildId.value?.value]!!.size.toString() + " tracks",
                 description = listText
             )
         )
@@ -477,9 +635,9 @@ suspend fun getPlayerInfo(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    title = "Informations sur le bot",
+                    title = "Now playing",
                     thumbnailUrl = link.player.playingTrack!!.info.artworkUrl.toString(),
-                    footer = "Auteur : " + link.player.playingTrack!!.info.author,
+                    footer = "Author : " + link.player.playingTrack!!.info.author,
                     description = link.player.playingTrack!!.info.title,
                 )
             )
@@ -488,10 +646,10 @@ suspend fun getPlayerInfo(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    "Erreur",
-                    kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                    "",
-                    "Il n'y a pas de musique en cours de lecture"
+                    title = "Error",
+                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                    footer = "",
+                    description = "There is no music playing !"
                 )
             )
         }
@@ -508,10 +666,10 @@ suspend fun insertTrack(
         response.respond {
             embeds = mutableListOf(
                 embedMaker(
-                    "Erreur",
-                    kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                    "",
-                    "Il n'y a pas de titre ou lien dans la commande"
+                    title = "Error",
+                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                    footer = "",
+                    description = "The track parameter is missing"
                 )
             )
         }
@@ -534,10 +692,10 @@ suspend fun insertTrack(
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            "Musique ajoutée",
-                            item.data.info.artworkUrl.toString(),
-                            item.data.info.author,
-                            item.data.info.title
+                            title = "Music added to the queue",
+                            thumbnailUrl = item.data.info.artworkUrl.toString(),
+                            footer = item.data.info.author,
+                            description = item.data.info.title
                         )
                     )
                 }
@@ -551,10 +709,10 @@ suspend fun insertTrack(
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            "Musique ajoutée apres la musique en cours",
-                            item.data.info.artworkUrl.toString(),
-                            item.data.info.author,
-                            item.data.info.title
+                            title = "Music added to the queue after the current track",
+                            thumbnailUrl = item.data.info.artworkUrl.toString(),
+                            footer = item.data.info.author,
+                            description = item.data.info.title
                         )
                     )
                 }
@@ -572,10 +730,10 @@ suspend fun insertTrack(
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            "Playlist ajoutée",
-                            kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                            "",
-                            "Voir /queue pour voir la playlist !"
+                            title = "Playlist added to the queue",
+                            thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                            footer = "",
+                            description = "Check /queue to see the playlist !"
                         )
                     )
                 }
@@ -589,10 +747,10 @@ suspend fun insertTrack(
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            "Playlist ajoutée apres la musique en cours",
-                            kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                            "",
-                            "Voir /queue pour voir la playlist !"
+                            title = "Playlist playlist added to the queue after the current track",
+                            thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                            footer = "",
+                            description = "Voir /queue pour voir la playlist !"
                         )
                     )
                 }
@@ -607,10 +765,10 @@ suspend fun insertTrack(
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            "Musique ajoutée",
-                            item.data.tracks[0].info.artworkUrl.toString(),
-                            item.data.tracks[0].info.author,
-                            item.data.tracks[0].info.title
+                            title = "Music added to the queue",
+                            thumbnailUrl = item.data.tracks[0].info.artworkUrl.toString(),
+                            footer = item.data.tracks[0].info.author,
+                            description = item.data.tracks[0].info.title
                         )
                     )
                 }
@@ -624,10 +782,10 @@ suspend fun insertTrack(
                 response.respond {
                     embeds = mutableListOf(
                         embedMaker(
-                            "Musique ajoutée apres la musique en cours",
-                            item.data.tracks[0].info.artworkUrl.toString(),
-                            item.data.tracks[0].info.author,
-                            item.data.tracks[0].info.title
+                            title = "Music added to the queue after the current track",
+                            thumbnailUrl = item.data.tracks[0].info.artworkUrl.toString(),
+                            footer = item.data.tracks[0].info.author,
+                            description = item.data.tracks[0].info.title
                         )
                     )
                 }
@@ -639,10 +797,10 @@ suspend fun insertTrack(
             response.respond {
                 embeds = mutableListOf(
                     embedMaker(
-                        "Erreur",
-                        kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                        "",
-                        "Aucun résultat pour cette requête. Veuillez reessayer !"
+                        title = "Error",
+                        thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                        footer = "",
+                        description = "No matches found for this query. Please try again !"
                     )
                 )
             }
@@ -653,16 +811,86 @@ suspend fun insertTrack(
             response.respond {
                 embeds = mutableListOf(
                     embedMaker(
-                        "Erreur",
-                        kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-                        "",
-                        "Erreur de chargement"
+                        title = "Error",
+                        thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                        footer = "",
+                        description = "Error while loading the track"
                     )
                 )
             }
             return
         }
     }
+}
+
+@OptIn(KordVoice::class)
+suspend fun joinChannel(
+    ctx: ChatInputCommandInteraction,
+    kord: Kord,
+    response: DeferredPublicMessageInteractionResponseBehavior,
+    connections: MutableMap<Snowflake, VoiceConnection>
+){
+    val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
+    if (voiceChannel == null) {
+        response.respond {
+            embeds = mutableListOf(
+                embedMaker(
+                    title = "Error",
+                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                    footer = "",
+                    description = "You must be in a vocal channel to use this command"
+                )
+            )
+        }
+        return
+    }
+
+    if (connections.contains(ctx.data.guildId.value!!)) {
+        connections[ctx.data.guildId.value!!]!!.disconnect()
+        connections.remove(ctx.data.guildId.value!!)
+    }
+    val connection = voiceChannel.connect {}
+    connections.put(ctx.data.guildId.value!!, connection)
+    response.respond {
+        content = "```Je suis la !```"
+    }
+
+
+//
+//    val voiceChannel = ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
+//    if (voiceChannel == null) {
+//        response.respond {
+//            embeds = mutableListOf(
+//                embedMaker(
+//                    title = "Error",
+//                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                    footer = "",
+//                    description = "You must be in a vocal channel to use this command"
+//                )
+//            )
+//        }
+//        return
+//    }
+//    if (connections.contains(ctx.data.guildId.value!!)) {
+//        connections.get(ctx.data.guildId.value!!)!!.disconnect()
+//        connections.remove(ctx.data.guildId.value!!)
+//    }
+//    val connection = voiceChannel.connect {
+//    }
+//    connections[ctx.data.guildId.value!!] = connection
+//    if(ctx.command.data.name.value == "join"){
+//        response.respond {
+//            embeds = mutableListOf(
+//                embedMaker(
+//                    title = "Voice channel joined",
+//                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+//                    footer = "",
+//                    description = "The bot has successfully joined the vocal channel ! "
+//                )
+//            )
+//        }
+//    }
+//    return
 }
 
 

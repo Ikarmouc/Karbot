@@ -2,8 +2,15 @@ package utility
 
 import dev.kord.common.Color
 import dev.kord.common.entity.Permission
+import dev.kord.core.Kord
+import dev.kord.core.behavior.interaction.response.DeferredPublicMessageInteractionResponseBehavior
+import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.core.entity.interaction.Interaction
+import dev.kord.core.entity.interaction.InteractionCommand
 import dev.kord.rest.builder.message.EmbedBuilder
+import kotlinx.coroutines.flow.count
+import kotlinx.coroutines.flow.last
 
 fun embedMaker(title: String,
                thumbnailUrl: String,
@@ -29,7 +36,6 @@ fun embedMaker(title: String,
     }
     if (description != "") {
         embed.description = description
-
     }
     if(fields.isNotEmpty()){
         embed.fields = fields
@@ -37,7 +43,67 @@ fun embedMaker(title: String,
     return embed
 }
 
-suspend fun isAutorized(ctx: Interaction, perm: Permission): Boolean {
-    return ctx.user.asMember(ctx.data.guildId.value!!).getPermissions().contains(perm)
+suspend fun isAuthorized(ctx: Interaction, permission: Permission): Boolean {
+    return ctx.user.asMember(ctx.data.guildId.value!!).getPermissions().contains(permission)
 }
+
+suspend fun clearMessages(
+    ctx : ChatInputCommandInteraction,
+    response: DeferredPublicMessageInteractionResponseBehavior,
+    kord: Kord,
+    command : InteractionCommand
+){
+    if (isAuthorized(ctx, Permission.ManageMessages)) {
+        var count = 0
+        val listMessage = ctx.getChannel().messages
+        if (listMessage.count() <= 1) {
+            response.respond {
+                embeds = mutableListOf(
+                    embedMaker(
+                        title = "Error",
+                        thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                        footer = "",
+                        description = "There are no messages to delete"
+                    )
+                )
+            }
+        } else {
+            if (command.integers["number"] == null) {
+                while (ctx.getChannelOrNull()?.messages?.count()!! > 1) {
+                    ctx.getChannel().deleteMessage(ctx.getChannel().messages.last().id)
+                    count++
+                }
+            } else {
+                while (count < command.integers["number"]!!) {
+                    ctx.getChannel().deleteMessage(ctx.getChannel().messages.last().id)
+                    count++
+                }
+            }
+            response.respond {
+                embeds = mutableListOf(
+                    embedMaker(
+                        title = "Messages deleted",
+                        thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                        footer = "",
+                        description = "```${count} messages deleted```"
+                    )
+                )
+            }
+        }
+    } else {
+        response.respond {
+            embeds = mutableListOf(
+                embedMaker(
+                    title = "Error",
+                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
+                    footer = "",
+                    description = "You don't have the permission to delete messages"
+                )
+            )
+        }
+        return
+    }
+}
+
+
 
