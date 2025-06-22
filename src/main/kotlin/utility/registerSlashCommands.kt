@@ -219,4 +219,17 @@ suspend fun registerSlashCommands(kord: Kord, environnementVariables : Dotenv) {
         "list_bans",
         "List all the banned users"
     )
+
+    kord.createGlobalChatInputCommand(
+        "unban",
+        "Unban a user"
+    ){
+        string("username", "The user to unban"){
+            required = true
+        }
+        string("reason", "The reason of the unban"){
+            required = false
+        }
+    }
+
 }

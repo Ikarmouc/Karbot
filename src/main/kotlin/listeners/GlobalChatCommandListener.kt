@@ -1,8 +1,6 @@
 package listeners
 
-import administration.banUser
-import administration.listBansUser
-import administration.renameUser
+import administration.*
 import dev.kord.common.Color
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Permission
@@ -154,7 +152,17 @@ fun globalChatCommandlistener(
                     }
                 }
             }
-
+            "unban" -> {
+                if(isAuthorized(ctx, Permission.BanMembers)){
+                    unbanUser(
+                        kord = kord,
+                        ctx = ctx,
+                        user = command.strings["username"].toString(),
+                        response = response,
+                        reason = command.strings["reason"].toString()
+                    )
+                }
+            }
             "listBans" -> {
                 if(isAuthorized(ctx, Permission.BanMembers)){
                     listBansUser(kord = kord, ctx = ctx, response = response)
@@ -171,7 +179,17 @@ fun globalChatCommandlistener(
                     }
                 }
             }
-
+            "kick" -> {
+                if(isAuthorized(ctx, Permission.KickMembers)){
+                    kickUser(
+                        kord = kord,
+                        ctx = ctx,
+                        user = command.users["user"],
+                        response = response,
+                        kickReason = command.strings["reason"].toString()
+                    )
+                }
+            }
             "renameUser" -> {
                 if(isAuthorized(ctx, Permission.ManageNicknames)){
                     renameUser(

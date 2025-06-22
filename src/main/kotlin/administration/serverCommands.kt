@@ -140,6 +140,8 @@ suspend fun listBansUser(ctx : ChatInputCommandInteraction,
 
     val list = kord.getGuild(ctx.data.guildId.value!!).asGuild().bans
 
+    println(list.toList())
+
     val result = "Username : Reason \n" + list.toList().map { it.user.asUser().username to (it.reason?.ifEmpty { "No reason" } ?: "No reason") }.joinToString("\n").replace("(", "").replace(")", "").replace(",",":")
 
     if(list.toList().isEmpty()){
@@ -166,4 +168,42 @@ suspend fun listBansUser(ctx : ChatInputCommandInteraction,
         }
     }
 
+}
+
+
+suspend fun unbanUser(kord: Kord,
+                      ctx : ChatInputCommandInteraction,
+                      user: String?,
+                      response: DeferredPublicMessageInteractionResponseBehavior,
+                      reason: String = "No reason") {
+
+
+
+    if(user == null){
+        response.respond {
+            embeds = mutableListOf(embedMaker(
+                title = "Error",
+                thumbnailUrl = "",
+                footer = "Requested by ${ctx.user.username}",
+                description = "User not found"
+            ))
+        }
+        return
+    }else{
+
+        if(kord.getGuild(ctx.data.guildId.value!!).bans.toList().map { it.user.asUser().username }.contains(user)){
+            val userToUnban = kord.getGuild(ctx.data.guildId.value!!).bans.toList().find { it.user.asUser().username == user }!!.user
+            kord.getGuild(ctx.data.guildId.value!!).unban(userToUnban.id, reason = reason)
+            response.respond {
+                embeds = mutableListOf(
+                    embedMaker(
+                        title = "User unbanned",
+                        thumbnailUrl = "",
+                        footer = "Requested by ${ctx.user.username}",
+                        description = "User $user has been unbanned with the following reason : \n $reason"
+                    )
+                )
+            }
+        }
+    }
 }
