@@ -9,6 +9,7 @@ import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.core.entity.interaction.Interaction
 import dev.kord.core.entity.interaction.InteractionCommand
 import dev.kord.rest.builder.message.EmbedBuilder
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.count
 import kotlinx.coroutines.flow.last
 
@@ -44,7 +45,8 @@ fun embedMaker(title: String,
 }
 
 suspend fun isAuthorized(ctx: Interaction, permission: Permission): Boolean {
-    return ctx.user.asMember(ctx.data.guildId.value!!).getPermissions().contains(permission)
+    println(ctx.user.asMember(ctx.data.guildId.value!!).getPermissions().values)
+    return ctx.user.asMember(ctx.data.guildId.value!!).getPermissions().contains(permission) || ctx.user.asMember(ctx.data.guildId.value!!).getPermissions().contains(Permission.Administrator)
 }
 
 suspend fun clearMessages(
@@ -71,11 +73,13 @@ suspend fun clearMessages(
             if (command.integers["number"] == null) {
                 while (ctx.getChannelOrNull()?.messages?.count()!! > 1) {
                     ctx.getChannel().deleteMessage(ctx.getChannel().messages.last().id)
+                    delay(1000)
                     count++
                 }
             } else {
                 while (count < command.integers["number"]!!) {
                     ctx.getChannel().deleteMessage(ctx.getChannel().messages.last().id)
+                    delay(1000)
                     count++
                 }
             }
@@ -89,6 +93,9 @@ suspend fun clearMessages(
                     )
                 )
             }
+            delay(5000)
+            ctx.getChannel().deleteMessage(ctx.getChannel().messages.last().id)
+            return
         }
     } else {
         response.respond {

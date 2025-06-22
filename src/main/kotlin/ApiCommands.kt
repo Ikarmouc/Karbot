@@ -7,7 +7,8 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.datetime.toLocalDate
+import io.ktor.utils.io.*
+import kotlinx.datetime.LocalDate
 import utility.embedMaker
 import weather.WeatherData
 import weather.WeatherIcons
@@ -57,7 +58,9 @@ suspend fun getWeather(city: String,response: DeferredPublicMessageInteractionRe
     for(i in 1..<weather?.days?.size!!){
         val field = EmbedBuilder.Field()
         // format the date to ex : 2 june 2021
-        val formattedDate = weather.days[i]?.datetime!!.toLocalDate().dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.FRENCH) + " " + weather.days[i]?.datetime!!.toLocalDate().dayOfMonth + " " + weather.days[i]?.datetime!!.toLocalDate().month.getDisplayName(TextStyle.SHORT, Locale.FRENCH) + " "
+        val formattedDate = LocalDate.parse(weather.days[i]?.datetime!!).dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.FRENCH) + " " + LocalDate.parse(
+            weather.days[i]?.datetime!!
+        ).dayOfMonth + " " + LocalDate.parse(weather.days[i]?.datetime!!).month.getDisplayName(TextStyle.SHORT, Locale.FRENCH) + " "
         field.name = formattedDate
         field.value = "${weather.days[i]!!.conditions}\n"
                 "\uD83C\uDF21 Temperature : ${weather.days[i]?.tempmax}°C\n"

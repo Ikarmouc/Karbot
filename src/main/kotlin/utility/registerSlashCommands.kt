@@ -1,12 +1,19 @@
 package utility
 
+import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.rest.builder.interaction.*
+import io.github.cdimascio.dotenv.Dotenv
 
 
-
-suspend fun registerSlashCommands(kord: Kord) {
-
+suspend fun registerSlashCommands(kord: Kord, environnementVariables : Dotenv) {
+    if(environnementVariables.get("BOT_MAIN_GUILD") != null){
+        kord.createGuildChatInputCommand(
+            guildId = Snowflake(environnementVariables.get("BOT_MAIN_GUILD")!!),
+            name = "exit",
+            description = "Exit the bot"
+        )
+    }
     kord.createGlobalChatInputCommand(
         "ping",
         "Return the ping of the bot"
@@ -38,7 +45,6 @@ suspend fun registerSlashCommands(kord: Kord) {
         }
     }
 
-
     kord.createGlobalChatInputCommand(
         "clear",
         "Clear messages",
@@ -50,7 +56,6 @@ suspend fun registerSlashCommands(kord: Kord) {
         }
 
     }
-
 
     kord.createGlobalChatInputCommand(
         "assign_role",
@@ -168,4 +173,50 @@ suspend fun registerSlashCommands(kord: Kord) {
             autocomplete = true
         }
     }
+
+    kord.createGlobalChatInputCommand(
+        "rename",
+        "Rename a user"
+    ){
+        user("user", "The user"){
+            required = true
+        }
+        string("name", "The new name"){
+            required = true
+        }
+    }
+
+    kord.createGlobalChatInputCommand(
+        "ban",
+        "Ban a user"
+    )
+    {
+        user("user", "The user to ban"){
+            required = true
+        }
+        string("reason", "The reason of the ban"){
+            required = true
+        }
+        integer("minutes", "The number of minutes"){
+            required = true
+        }
+
+    }
+
+    kord.createGlobalChatInputCommand(
+        "kick",
+        "Kick a user"
+    )
+    {
+        user("user", "The user to kick"){
+            required = true
+        }
+        string("reason", "The reason of the kick"){
+            required = true
+        }
+    }
+    kord.createGlobalChatInputCommand(
+        "list_bans",
+        "List all the banned users"
+    )
 }

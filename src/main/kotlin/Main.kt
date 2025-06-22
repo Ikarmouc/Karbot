@@ -18,7 +18,6 @@ import utility.registerSlashCommands
 
 @OptIn(KordVoice::class)
 suspend fun main() {
-
     val dotenv = Dotenv.load()
     if(dotenv.get("BOT_TOKEN") == null){
         println("Please create a .env file with a BOT_TOKEN variable")
@@ -31,16 +30,15 @@ suspend fun main() {
     if(dotenv.get("DEV_MODE") == "true"){
         presenceText = "Dev mode"
         kord.getGlobalApplicationCommands().collect {it.delete()}
-        registerSlashCommands(kord)
+        registerSlashCommands(kord, dotenv)
     }else{
         presenceText = "Vos commandes (/help)"
     }
-    
     registerAutoCompleteCommands(kord)
     globalChatListener(kord)
     globalChatCommandlistener(kord, connections,lavalink)
     globalMessageListener(kord)
-    voiceActivityListener(kord,connections,lavalink)
+    voiceActivityListener(kord, lavalink)
     println("Bot is now running try /about for more information")
     kord.login{
         @OptIn(PrivilegedIntent::class)
@@ -64,4 +62,5 @@ fun connectLavalink(kord : Kord) : LavaKord {
     }
     lavalink.addNode("ws://localhost:2333", "KarbotLavalink","Lavalink")
     return lavalink
+
 }

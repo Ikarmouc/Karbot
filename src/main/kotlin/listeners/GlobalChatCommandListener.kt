@@ -1,5 +1,8 @@
 package listeners
 
+import administration.banUser
+import administration.listBansUser
+import administration.renameUser
 import dev.kord.common.Color
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Permission
@@ -22,7 +25,7 @@ import utility.clearMessages
 
 var queueList = mutableMapOf<ULong, Queue>()
 @OptIn(KordVoice::class)
-suspend fun globalChatCommandlistener(
+fun globalChatCommandlistener(
     kord: Kord,
     connections: MutableMap<Snowflake, VoiceConnection>,
     lavalink: LavaKord
@@ -98,40 +101,12 @@ suspend fun globalChatCommandlistener(
                     ctx = ctx,
                     kord = kord,
                     connections = connections,
-                    response = response
+                    response = response,
+                    lavalink = lavalink
                 )
             }
 
             "play" -> {
-//                val voiceConnection = connections[ctx.data.guildId.value!!]
-//                if (voiceConnection == null) {
-//                    val voiceChannel =
-//                        ctx.user.asMember(ctx.data.guildId.value!!).getVoiceStateOrNull()?.getChannelOrNull()
-//                    if (voiceChannel == null) {
-//                        response.respond {
-//                            embeds = mutableListOf(
-//                                embedMaker(
-//                                    title = "Error",
-//                                    thumbnailUrl = kord.getSelf().avatar?.cdnUrl?.toUrl().toString(),
-//                                    footer = "",
-//                                    description = "You must be in a vocal channel to use this command"
-//                                )
-//                            )
-//                        }
-//                        return@on
-//                    } else {
-//                        val connection = voiceChannel.connect {
-//                        }
-//                        connections[ctx.data.guildId.value!!] = connection
-//                        link = lavalink.getLink(guildId.value)
-//                    }
-//                }
-//                joinChannel(
-//                    ctx = ctx,
-//                    kord = kord,
-//                    connections = connections,
-//                    response = response
-//                )
                 playMusic(lavalink = lavalink, response = response, ctx = ctx, connections = connections)
                 return@on
             }
@@ -156,6 +131,71 @@ suspend fun globalChatCommandlistener(
                     command = command
                 )
             }
+
+            "ban" -> {
+                if(isAuthorized(ctx, Permission.BanMembers)){
+                    banUser(
+                        kord = kord,
+                        ctx = ctx,
+                        user = command.users["user"],
+                        response = response,
+                        banReason = command.strings["reason"].toString()
+                    )
+                }else{
+                    response.respond {
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Error",
+                                thumbnailUrl = "",
+                                footer = "Requested by ${ctx.user.username}",
+                                description = "You don't have permission to ban users"
+                            )
+                        )
+                    }
+                }
+            }
+
+            "listBans" -> {
+                if(isAuthorized(ctx, Permission.BanMembers)){
+                    listBansUser(kord = kord, ctx = ctx, response = response)
+                }else{
+                    response.respond {
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Error",
+                                thumbnailUrl = "",
+                                footer = "Requested by ${ctx.user.username}",
+                                description = "You don't have permission to perform this action"
+                            )
+                        )
+                    }
+                }
+            }
+
+            "renameUser" -> {
+                if(isAuthorized(ctx, Permission.ManageNicknames)){
+                    renameUser(
+                        kord = kord,
+                        ctx = ctx,
+                        user = command.users["user"],
+                        response = response,
+                        newName = command.strings["name"].toString()
+                    )
+                }else{
+                    response.respond {
+                        embeds = mutableListOf(
+                            embedMaker(
+                                title = "Error",
+                                thumbnailUrl = "",
+                                footer = "Requested by ${ctx.user.username}",
+                                description = "You don't have permission to rename users"
+                            )
+                        )
+                    }
+                }
+
+            }
+
             "assign_role" -> {
                 if (isAuthorized(ctx, Permission.ManageRoles)) {
                     val user = ctx.command.users["user"]?.asMember(ctx.data.guildId.value!!)
@@ -394,14 +434,17 @@ suspend fun globalChatCommandlistener(
 
 
             "insert" -> {
-                if(checkVoiceConnection(connections,ctx,response,kord)){
-                    insertTrack(ctx,kord,response,lavalink)
-                }
+                insertTrack(ctx,kord,response,lavalink,connections)
             }
 
             "weather_info" -> {
                 val city = command.strings["city"].toString().uppercase()
                 getWeather(city, response)
+            }
+            "list_bans" -> {
+                if (isAuthorized(ctx, Permission.BanMembers)) {
+                    listBansUser(ctx, kord, response)
+                }
             }
             else -> {
                 response.respond {
