@@ -45,3 +45,4 @@ bin/
 .idea/codeStyles/Project.xml
 /.idea/
 /.env
+/src/worldcities.csv
