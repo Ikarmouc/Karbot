@@ -232,4 +232,22 @@ suspend fun registerSlashCommands(kord: Kord, environnementVariables : Dotenv) {
         }
     }
 
+    kord.createGlobalChatInputCommand(
+        "create_channel",
+        "Create a channel"
+    )
+    {
+        string("name", "The name of the channel"){
+            required = true
+        }
+        string("channel_type", "The type of the channel"){
+            choice("voice", "Voice channel")
+            choice("text", "Text channel")
+            required = true
+        }
+        string("category", "The category of the channel"){
+            required = false
+        }
+    }
+
 }

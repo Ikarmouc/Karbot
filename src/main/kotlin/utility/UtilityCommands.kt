@@ -1,5 +1,4 @@
 package utility
-
 import dev.kord.common.Color
 import dev.kord.common.entity.Permission
 import dev.kord.core.Kord
@@ -9,9 +8,15 @@ import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.core.entity.interaction.Interaction
 import dev.kord.core.entity.interaction.InteractionCommand
 import dev.kord.rest.builder.message.EmbedBuilder
+import dev.schlaubi.lavakord.LavaKord
+import dev.schlaubi.lavakord.kord.lavakord
+import io.github.cdimascio.dotenv.Dotenv
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.count
 import kotlinx.coroutines.flow.last
+
+import java.sql.*
+import kotlin.time.Duration.Companion.seconds
 
 fun embedMaker(title: String,
                thumbnailUrl: String,
@@ -112,5 +117,28 @@ suspend fun clearMessages(
     }
 }
 
+fun dbConnect(dotenv: Dotenv): Connection? {
+    var connection : Connection
+    try {
+         connection = DriverManager.getConnection(dotenv.get("DATABASE_URL"))
+        } catch (e : SQLException) {
+            println("Error while connecting to database")
+            return null
+        }
+    return connection
+}
 
+fun connectLavalink(kord : Kord) : LavaKord {
+    var lavalink: LavaKord
+    lavalink = kord.lavakord() {
+        link {
+            autoReconnect = true
+            autoMigrateOnDisconnect = false
+            resumeTimeout = 0
+            retry = linear(5.seconds, 20.seconds, 20)
+        }
+    }
+        lavalink.addNode("ws://localhost:2333", "KarbotLavalink","Lavalink")
+    return lavalink
 
+}

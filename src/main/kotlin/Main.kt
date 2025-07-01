@@ -5,14 +5,12 @@ import dev.kord.common.entity.PresenceStatus
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Snowflake
 import dev.kord.voice.VoiceConnection
-import dev.schlaubi.lavakord.LavaKord
-import dev.schlaubi.lavakord.kord.lavakord
-import kotlin.time.Duration.Companion.seconds
 import io.github.cdimascio.dotenv.Dotenv
-import listeners.globalChatCommandlistener
+import listeners.globalChatCommandListener
 import listeners.globalChatListener
 import listeners.globalMessageListener
 import listeners.voiceActivityListener
+import utility.connectLavalink
 import utility.registerAutoCompleteCommands
 import utility.registerSlashCommands
 
@@ -23,6 +21,7 @@ suspend fun main() {
         println("Please create a .env file with a BOT_TOKEN variable")
         return
     }
+    // dbConnect(dotenv)
     val kord = Kord(token = dotenv.get("BOT_TOKEN")!!)
     val presenceText: String
     val connections : MutableMap<Snowflake, VoiceConnection> = mutableMapOf() //Map contenant les links de chacun des serveurs
@@ -36,7 +35,7 @@ suspend fun main() {
     }
     registerAutoCompleteCommands(kord)
     globalChatListener(kord)
-    globalChatCommandlistener(kord, connections,lavalink)
+    globalChatCommandListener(kord, connections,lavalink)
     globalMessageListener(kord)
     voiceActivityListener(kord, lavalink)
     println("Bot is now running try /about for more information")
@@ -50,17 +49,3 @@ suspend fun main() {
     }
 }
 
-fun connectLavalink(kord : Kord) : LavaKord {
-    val lavalink: LavaKord = kord.lavakord() {
-        link {
-            autoReconnect = true
-            autoMigrateOnDisconnect = false
-            resumeTimeout = 0
-            retry = linear(5.seconds, 20.seconds, 20)
-
-        }
-    }
-    lavalink.addNode("ws://localhost:2333", "KarbotLavalink","Lavalink")
-    return lavalink
-
-}

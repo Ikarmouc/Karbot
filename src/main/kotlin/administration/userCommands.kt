@@ -27,16 +27,20 @@ suspend fun renameUser(kord: Kord,
         }
         return
     }else{
-
+        val oldNickname = user.asMember(ctx.data.guildId.value!!).nickname
         user.asMember(ctx.data.guildId.value!!).edit {
             nickname = newName
         }
-
-//        kord.getUser(userId)?.asUser()?.asMember(ctx.invokedCommandGuildId!!)?.edit {
-//            nickname = newName
-//        }
+        response.respond {
+            embeds = mutableListOf(
+                embedMaker(
+                    title = "User renamed",
+                    thumbnailUrl = "",
+                    description = "User $oldNickname has been renamed to $newName",
+                    footer = "Requested by ${ctx.user.username}",
+                ))
+        }
     }
-
-
-
 }
+
+

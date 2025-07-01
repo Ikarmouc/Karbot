@@ -2,6 +2,7 @@ package administration
 
 import dev.kord.core.Kord
 import dev.kord.core.behavior.ban
+import dev.kord.core.behavior.createTextChannel
 import dev.kord.core.behavior.interaction.response.DeferredPublicMessageInteractionResponseBehavior
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.User
@@ -177,8 +178,6 @@ suspend fun unbanUser(kord: Kord,
                       response: DeferredPublicMessageInteractionResponseBehavior,
                       reason: String = "No reason") {
 
-
-
     if(user == null){
         response.respond {
             embeds = mutableListOf(embedMaker(
@@ -206,4 +205,29 @@ suspend fun unbanUser(kord: Kord,
             }
         }
     }
+}
+
+suspend fun createChannel(kord: Kord,
+                          ctx: ChatInputCommandInteraction,
+                          channelName: String,
+                          response: DeferredPublicMessageInteractionResponseBehavior,
+                          channelType: String) {
+        if(channelType.contains("Text")){
+            kord.getGuild(ctx.data.guildId.value!!).createTextChannel(channelName){
+                reason = "Created by ${ctx.user.username}"
+                name = channelName
+
+            }
+            response.respond {
+                embeds = mutableListOf(
+                    embedMaker(
+                        title = "Channel created",
+                        thumbnailUrl = "",
+                        footer = "Requested by ${ctx.user.username}",
+                        description = "Text channel $channelName has been created"
+                    )
+                )
+            }
+
+        }
 }

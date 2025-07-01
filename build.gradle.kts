@@ -1,6 +1,6 @@
 
 plugins {
-    kotlin("jvm") version "2.1.21"
+    kotlin("jvm") version "2.2.0"
     application
 }
 group = "org.ikarmouc"
@@ -22,6 +22,7 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:2.0.17")
     implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
     implementation("com.google.code.gson:gson:2.13.1")
+    implementation("org.xerial:sqlite-jdbc:3.50.2.0")
 }
 tasks.test {
     useJUnitPlatform()

@@ -23,7 +23,7 @@ import utility.clearMessages
 
 var queueList = mutableMapOf<ULong, Queue>()
 @OptIn(KordVoice::class)
-fun globalChatCommandlistener(
+fun globalChatCommandListener(
     kord: Kord,
     connections: MutableMap<Snowflake, VoiceConnection>,
     lavalink: LavaKord
@@ -78,9 +78,9 @@ fun globalChatCommandlistener(
                     embed.field("Discord api latency", false) {
                         "⬆⬇ $pingDiscord ms"
                     }
-                    val thumdnail = EmbedBuilder.Thumbnail()
-                    thumdnail.url = "https://cdn3.emoji.gg/emojis/2217-salesforce-load.gif"
-                    embed.thumbnail = thumdnail
+                    val thumbnail = EmbedBuilder.Thumbnail()
+                    thumbnail.url = "https://cdn3.emoji.gg/emojis/2217-salesforce-load.gif"
+                    embed.thumbnail = thumbnail
                     response.respond {
                         embeds = mutableListOf(
                             embedMaker(
@@ -190,7 +190,7 @@ fun globalChatCommandlistener(
                     )
                 }
             }
-            "renameUser" -> {
+            "rename" -> {
                 if(isAuthorized(ctx, Permission.ManageNicknames)){
                     renameUser(
                         kord = kord,
@@ -464,6 +464,18 @@ fun globalChatCommandlistener(
                     listBansUser(ctx, kord, response)
                 }
             }
+            "create_channel" -> {
+                if (isAuthorized(ctx, Permission.CreateInstantInvite)) {
+                    createChannel(kord = kord,
+                        ctx = ctx,
+                        channelName = command.strings["name"].toString(),
+                        response = response,
+                        channelType = command.strings["channel_type"].toString()
+                    )
+
+
+                }
+            }
             else -> {
                 response.respond {
                     embeds = mutableListOf(
@@ -479,6 +491,8 @@ fun globalChatCommandlistener(
 
             }
         }
+
+
 
 
 
